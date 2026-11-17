@@ -83,6 +83,9 @@ export class CRSWorldCoordinateHelper implements WorldCoordinateHelper {
     private _latitudeRange: [number, number] | undefined;
     /** A CRS is a bounded plane: no world copies, no wrapping, and no latitude clamp. */
     readonly wraps = false;
+    /** Every tile source of a map in a registered CRS serves tiles of its tile matrix set. */
+    readonly sourceTileGrid = 'plane';
+    readonly worldBounds = [0, 0, 1, 1] as const;
 
     constructor(crs: CRS) {
         this._crs = crs;

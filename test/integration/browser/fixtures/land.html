@@ -22,6 +22,7 @@ maplibregl.setWorkerUrl('../../../../dist/maplibre-gl-worker-dev.mjs');
 window.maplibregl = maplibregl;
 
 // `map` is read from `window` by the browser test; module scope doesn't expose it.
+maplibregl.setDefaultProjection('mercator');
 window.map = new maplibregl.Map({
     container: 'map',
     preserveDrawingBuffer: true,

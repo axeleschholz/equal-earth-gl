@@ -37,6 +37,7 @@ import {
     type GetImagesParameters,
     type GetImagesResponse
 } from '../util/actor_messages.ts';
+import {getDefaultProjection} from '../geo/projection/default_projection.ts';
 import {createProjectionFromName} from '../geo/projection/projection_factory.ts';
 
 import type {Source} from '../source/source.ts';
@@ -513,7 +514,7 @@ export class Style extends Evented<MapEventType> {
         this.stylesheet = nextState;
 
         this.setGlobalState(this.stylesheet.state ?? null);
-        const projectionObjects = createProjectionFromName(this.stylesheet.projection?.type || 'mercator', this._globalState);
+        const projectionObjects = createProjectionFromName(this.stylesheet.projection?.type || getDefaultProjection(), this._globalState);
         this.projection = projectionObjects.projection;
 
         for (const id in nextState.sources) {
@@ -1788,7 +1789,7 @@ export class Style extends Evented<MapEventType> {
 
     setProjection(projection?: ProjectionSpecification): void {
         this._checkLoaded();
-        const resolvedProjection = projection ?? {type: 'mercator'};
+        const resolvedProjection = projection ?? {type: getDefaultProjection()};
         this.stylesheet.projection = projection;
         if (this.projection) {
             if (this.projection.name === resolvedProjection.type) {

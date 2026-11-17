@@ -56,6 +56,8 @@ async function performQueryOnFixture(fixture)  {
     document.getElementById('map').style.width = `${options.width}px`;
     document.getElementById('map').style.height = `${options.height}px`;
 
+    maplibregl.setDefaultProjection('mercator');
+
     const map =  new maplibregl.Map({
         container: 'map',
         style,

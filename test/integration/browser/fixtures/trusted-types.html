@@ -25,6 +25,7 @@ maplibregl.setTrustedTypesPolicy(trustedTypes.createPolicy('app', {
     createScriptURL: (url) => url
 }));
 
+maplibregl.setDefaultProjection('mercator');
 window.map = new maplibregl.Map({
     container: 'map',
     zoom: 1,

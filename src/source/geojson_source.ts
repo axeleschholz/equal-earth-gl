@@ -542,7 +542,7 @@ export class GeoJSONSource extends Evented<SourceEventType> implements Source {
         const diff = 'data' in update || replaced ? undefined : update.diff;
         const affectedGeometries = this._applyDiffToSource(diff);
         const refreshesClusters = !('data' in update) && update.updateCluster;
-        const reloadsEveryTile = refreshesClusters || this.map?.style?.projection?.worldCoordinateHelper.wraps === false;
+        const reloadsEveryTile = refreshesClusters || this.map?.style?.projection?.worldCoordinateHelper.sourceTileGrid === 'plane';
         const shouldReloadTileOptions = reloadsEveryTile ? undefined : this._getShouldReloadTileOptions(affectedGeometries);
 
         const eventData: {resourceTiming?: PerformanceResourceTiming[]} = {};

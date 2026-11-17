@@ -1,6 +1,7 @@
 import type {LngLat} from './lng_lat.ts';
 import type {MercatorCoordinate} from './mercator_coordinate.ts';
 import type {TileMatrixSet} from './projection/tile_matrix_set.ts';
+import type {TileGrid} from './projection/tile_warp.ts';
 
 /**
  * @internal
@@ -46,6 +47,17 @@ export interface WorldCoordinateHelper {
      * mercator range. A planar CRS is a bounded square that does none of that.
      */
     wraps: boolean;
+    /**
+     * The grid the map's tile sources are cut in, unless a source has its own: `plane` for a registered CRS, whose
+     * sources serve tiles of its tile matrix set, and `mercator` where they serve Web Mercator tiles, which is the
+     * plane's own grid on mercator and a different one on the `equal-earth` plane.
+     */
+    sourceTileGrid: TileGrid;
+    /**
+     * The part of the 0..1 world square that the world occupies, as `[minX, minY, maxX, maxY]`: the whole square for
+     * mercator and a registered CRS, a band across its middle for a world projection that is wider than high.
+     */
+    worldBounds: readonly [number, number, number, number];
     /**
      * The quad tile matrix set whose tile 0/0/0 is the world square, in CRS units: EPSG:3857 meters for mercator, the
      * registered definition's `tileMatrixSet` for a planar CRS. The `{bbox}` tile URL token is expressed in it.

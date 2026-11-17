@@ -4,6 +4,7 @@ import {GlobeProjection} from './globe_projection.ts';
 import {VerticalPerspectiveProjection} from './vertical_perspective_projection.ts';
 import {CRSWorldCoordinateHelper} from './crs.ts';
 import {getRegisteredProjection} from './projection_crud.ts';
+import {equalEarthWorldCoordinateHelper} from './equal_earth_world.ts';
 
 import type {ProjectionSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {Projection} from './projection.ts';
@@ -59,6 +60,13 @@ export function createProjectionFromName(name: ProjectionSpecification['type'], 
             return {
                 projection: globeProjection,
                 cameraProjection: 'globe',
+            };
+        }
+        case 'equal-earth' as ProjectionSpecification['type']:
+        {
+            return {
+                projection: new MercatorProjection(equalEarthWorldCoordinateHelper),
+                cameraProjection: 'mercator',
             };
         }
         case 'vertical-perspective':

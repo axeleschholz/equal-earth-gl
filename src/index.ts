@@ -33,6 +33,7 @@ import {VideoSource} from './source/video_source.ts';
 import {type Source, type SourceClass, addSourceType} from './source/source.ts';
 import {addProtocol, removeProtocol} from './source/protocol_crud.ts';
 import {addProjection, removeProjection} from './geo/projection/projection_crud.ts';
+import {getDefaultProjection, setDefaultProjection} from './geo/projection/default_projection.ts';
 import {type GlobalDispatcher, type GlobalDispatcherEventType, type CustomMessageHandler, getGlobalDispatcher} from './util/global_dispatcher.ts';
 import {EdgeInsets, type PaddingOptions} from './geo/edge_insets.ts';
 import {MapTerrainEvent, MapStyleImageMissingEvent, MapStyleDataEvent, MapStyleLoadEvent, MapSourceDataEvent, MapBoxZoomEvent, MapLibreEvent, MapMovementEvent, type MapLayerTouchEvent, type MapLayerMouseEvent, type MapLayerEventType, type MapEventType, MapContextEvent, MapWheelEvent, MapTouchEvent, MapMouseEvent, type MapSourceDataType, type SourceEventType, MapProjectionEvent} from './ui/events.ts';
@@ -443,6 +444,8 @@ export {
     removeProtocol,
     addProjection,
     removeProjection,
+    getDefaultProjection,
+    setDefaultProjection,
     addSourceType,
     importScriptInWorkers,
     createTileMesh,

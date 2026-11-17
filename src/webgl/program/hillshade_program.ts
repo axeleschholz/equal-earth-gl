@@ -135,7 +135,7 @@ const hillshadeUniformPrepareValues = (worldCoordinateHelper: WorldCoordinateHel
  * used before, so its hillshade does not change.
  */
 function getLog2WorldWidth(worldCoordinateHelper: WorldCoordinateHelper): number {
-    return worldCoordinateHelper.wraps ? 25.2562 : Math.log2(worldCoordinateHelper.metersPerWorldUnit(0.5, 0.5));
+    return worldCoordinateHelper.sourceTileGrid === 'mercator' ? 25.2562 : Math.log2(worldCoordinateHelper.metersPerWorldUnit(0.5, 0.5));
 }
 
 /**
@@ -145,7 +145,7 @@ function getLog2WorldWidth(worldCoordinateHelper: WorldCoordinateHelper): number
  * applies no correction.
  */
 function getTileLatRange(worldCoordinateHelper: WorldCoordinateHelper, tileID: OverscaledTileID): [number, number] {
-    if (!worldCoordinateHelper.wraps) return [0, 0];
+    if (worldCoordinateHelper.sourceTileGrid !== 'mercator') return [0, 0];
     // for scaling the magnitude of a points slope by its latitude
     const tilesAtZoom = Math.pow(2, tileID.canonical.z);
     const y = tileID.canonical.y;

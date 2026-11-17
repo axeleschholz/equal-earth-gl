@@ -78,6 +78,11 @@ type TestData = {
     maxPitch: number;
     maxZoom: number;
     continuesRepaint: boolean;
+    /**
+     * The projection of a style that names none.
+     * @defaultValue 'mercator'
+     */
+    defaultProjection?: string;
     // Crop PNG results if they're too large
     reportWidth: number;
     reportHeight: number;
@@ -690,6 +695,8 @@ async function getImageFromStyle(styleForTest: StyleWithTestData, page: Page): P
             const fakeCanvas = await createFakeCanvas(document, options.addFakeCanvas.id, options.addFakeCanvas.image);
             document.body.appendChild(fakeCanvas);
         }
+
+        maplibregl.setDefaultProjection((options.defaultProjection ?? 'mercator'));
 
         const map = new maplibregl.Map({
             container: 'map',
