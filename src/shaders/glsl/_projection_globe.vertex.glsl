@@ -172,3 +172,9 @@ vec4 projectTileFor3D(vec2 posInTile, float elevation) {
     vec3 spherePos = projectToSphere(posInTile, posInTile);
     return interpolateProjectionFor3D(posInTile, spherePos, elevation);
 }
+
+// The offset in the tile that draws `offset` across a line at the width a flat tile gives it.
+// Tiles are flat or evenly scaled here, so that is the offset itself.
+vec2 projectTileOffset(vec2 posInTile, vec2 offset) {
+    return offset;
+}

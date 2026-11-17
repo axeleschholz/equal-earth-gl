@@ -15,6 +15,7 @@ import type {Tile} from '../tile/tile.ts';
 import type {OverscaledTileID, CanonicalTileID} from '../tile/tile_id.ts';
 import type {LoadTileResult} from '../source/vector_tile_source.ts';
 import type {CanvasSourceSpecification} from '../source/canvas_source.ts';
+import type {TileGrid} from '../geo/projection/tile_warp.ts';
 
 const registeredSources = {} as {[key:string]: SourceClass};
 
@@ -29,6 +30,11 @@ const registeredSources = {} as {[key:string]: SourceClass};
  * @group Sources
  */
 export interface Source {
+    /**
+     * The grid this source's tiles are cut in, when it is not the one the map's sources are taken to be cut in:
+     * mercator's, or on a map in a registered CRS that of the CRS.
+     */
+    tileGrid?: TileGrid;
     readonly type: string;
     /**
      * The id for the source. Must not be used by any existing source.

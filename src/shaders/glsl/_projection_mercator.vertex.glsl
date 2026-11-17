@@ -35,3 +35,9 @@ vec4 projectTileFor3D(vec2 posInTile, float elevation) {
     // thus here they are the same function.
     return projectTileWithElevation(posInTile, elevation);
 }
+
+// The offset in the tile that draws `offset` across a line at the width a flat tile gives it.
+// Tiles are flat or evenly scaled here, so that is the offset itself.
+vec2 projectTileOffset(vec2 posInTile, vec2 offset) {
+    return offset;
+}

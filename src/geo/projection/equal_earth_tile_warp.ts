@@ -20,14 +20,20 @@ export const EXPANSION_OVERZOOM = 4;
 const EXPANSION_BUFFER = 0.125;
 
 /** The highest power of `v` an expansion has room for. */
-const MAX_DEGREE = 9;
+const MAX_DEGREE = 8;
+
+/** Where the parts of an expansion start in its twenty coefficients, see {@link evaluateExpansion}. */
+const KAPPA = MAX_DEGREE + 1;
+const C_BEFORE_FIRST = KAPPA;
+const POLE_A = 2 * MAX_DEGREE + 2;
+const POLE_C = POLE_A + 1;
 
 /**
  * The degree of the polynomials an expansion is fitted with at a tile zoom. A tile spans less of the world with
  * every zoom level, so fewer terms describe it, and fitting more than that only fits rounding noise.
  */
 function expansionDegree(z: number): number {
-    if (z < 6) return 9;
+    if (z < 6) return MAX_DEGREE;
     if (z < 12) return 5;
     return 3;
 }
@@ -92,21 +98,31 @@ function interpolate(nodes: Float64Array, values: Float64Array): Float64Array {
  * on its latitude alone. In a mercator tile, longitude is linear in `u` and latitude depends on `v` alone. So the
  * warp of a tile is two functions of `v`: with `A(v)` the x per unit of `u`, and `kappa` the tile center's
  * longitude in units of the tile's width, `x - x(center) = u * A(v) + kappa * (A(v) - A(0))`, and
- * `y - y(center) = C(v)` with `C(0) = 0`. The coefficients are `A`'s ten, lowest power first, then `kappa`, then
- * `C`'s nine from the first power.
+ * `y - y(center) = C(v)` with `C(0) = 0`.
+ *
+ * The coefficients are `A`'s nine, lowest power first, then `kappa`, then `C`'s eight from the first power, then
+ * the values `A` and `C` take on the pole the tile's row touches, which is beyond any `v`, or zeros in the rows
+ * between.
  *
  * @param out - the array the result is written to
+ * @param pole - 1 or -1 for a vertex on the north or south pole, which uses the pole's values instead of `v`
  */
-export function evaluateExpansion(coefficients: Float64Array, u: number, v: number, out: [number, number]): [number, number] {
-    let aSlope = 0;
-    let cSlope = 0;
-    for (let k = MAX_DEGREE; k >= 1; k--) {
-        aSlope = aSlope * v + coefficients[k];
-        cSlope = cSlope * v + coefficients[MAX_DEGREE + 1 + k];
+export function evaluateExpansion(coefficients: Float64Array, u: number, v: number, out: [number, number], pole: -1 | 0 | 1 = 0): [number, number] {
+    let aDifference: number;
+    if (pole) {
+        aDifference = coefficients[POLE_A] - coefficients[0];
+        out[1] = coefficients[POLE_C];
+    } else {
+        let aSlope = 0;
+        let cSlope = 0;
+        for (let k = MAX_DEGREE; k >= 1; k--) {
+            aSlope = aSlope * v + coefficients[k];
+            cSlope = cSlope * v + coefficients[C_BEFORE_FIRST + k];
+        }
+        aDifference = aSlope * v;
+        out[1] = cSlope * v;
     }
-    const aDifference = aSlope * v;
-    out[0] = u * (coefficients[0] + aDifference) + coefficients[MAX_DEGREE + 1] * aDifference;
-    out[1] = cSlope * v;
+    out[0] = u * (coefficients[0] + aDifference) + coefficients[KAPPA] * aDifference;
     return out;
 }
 
@@ -120,9 +136,9 @@ function latitudeOfMercatorY(y: number): number {
 
 class EqualEarthTileWarp implements TileWarp {
     /**
-     * Measured over each zoom's tiles, drawn sixteen times their size: the worst expansion is 0.058 px off at
-     * zoom 2, 0.0002 px at zoom 3 and below 0.0001 px from there to zoom 22. The tiles of zooms 0 to 2 span too
-     * much latitude for ten terms.
+     * Measured over each zoom's tiles, drawn sixteen times their size: the worst expansion is well over 0.05 px
+     * off at zoom 2 and well under it from zoom 3 to zoom 22. The tiles of zooms 0 to 2 span too much latitude
+     * for nine terms.
      */
     readonly expansionMinZoom: number = 3;
     private readonly _parallel: [number, number] = [0, 0];
@@ -189,14 +205,19 @@ class EqualEarthTileWarp implements TileWarp {
         }
         const a = interpolate(nodes, xPerU);
         const c = interpolate(nodes, y);
-        const coefficients = new Float64Array(2 * MAX_DEGREE + 2);
+        const coefficients = new Float64Array(POLE_C + 1);
         let scale = 1;
         for (let k = 0; k <= degree; k++) {
             coefficients[k] = a[k] * scale;
-            if (k >= 1) coefficients[MAX_DEGREE + 1 + k] = c[k] * scale;
+            if (k >= 1) coefficients[C_BEFORE_FIRST + k] = c[k] * scale;
             scale /= halfRange;
         }
-        coefficients[MAX_DEGREE + 1] = tile.x + 0.5 - tiles / 2;
+        coefficients[KAPPA] = tile.x + 0.5 - tiles / 2;
+        if (tile.y === 0 || tile.y === tiles - 1) {
+            const pole = equalEarthParallel(tile.y === 0 ? 90 : -90, this._parallel);
+            coefficients[POLE_A] = pole[0] * degreesAcross / WORLD_METERS;
+            coefficients[POLE_C] = -(pole[1] - centerY) / WORLD_METERS;
+        }
         return coefficients;
     }
 }

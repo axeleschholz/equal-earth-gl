@@ -169,6 +169,28 @@ describe('equalEarthTileWarp.expansion', () => {
         expect(warp.expansion({x: 5, y: 9, z: 4})).toHaveLength(20);
     });
 
+    test('places the pole vertices of the top and bottom rows on the pole line', () => {
+        const out: [number, number] = [0, 0];
+        for (const z of [3, 7, 15]) {
+            const tiles = Math.pow(2, z);
+            for (const [tile, pole, lat] of [[{z, x: 0, y: 0}, 1, 90], [{z, x: tiles - 1, y: tiles - 1}, -1, -90], [{z, x: Math.floor(tiles / 3), y: 0}, 1, 90]] as Array<[Tile, 1 | -1, number]>) {
+                const center = warp.warp(tile, EXTENT / 2, EXTENT / 2, [0, 0]);
+                for (const u of [-0.5, -0.1, 0.5]) {
+                    evaluateExpansion(warp.expansion(tile), u, 0.3, out, pole);
+                    const expected = helper.worldFromLngLat((tile.x + u + 0.5) / tiles * 360 - 180, lat);
+                    expect(Math.abs(out[0] + center[0] - expected.x) * overzoomedPixels(tile)).toBeLessThan(0.05);
+                    expect(Math.abs(out[1] + center[1] - expected.y) * overzoomedPixels(tile)).toBeLessThan(0.05);
+                }
+            }
+        }
+    });
+
+    test('has no pole in the rows between', () => {
+        const coefficients = warp.expansion({z: 4, x: 3, y: 5});
+        expect(coefficients[18]).toBe(0);
+        expect(coefficients[19]).toBe(0);
+    });
+
     test('stays within 0.05 px of the warp from expansionMinZoom up, for tiles drawn up to sixteen times their size', () => {
         const random = seededRandom(6);
         for (let z = warp.expansionMinZoom; z <= 22; z++) {
