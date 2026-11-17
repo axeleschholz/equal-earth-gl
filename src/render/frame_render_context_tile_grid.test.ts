@@ -52,4 +52,21 @@ describe('a frame on a plane that mercator tiles are warped onto', () => {
         const {frameRenderContext} = equalEarthFrame();
         expect(frameRenderContext.getProjectionDataForTile(tileID, {tileGrid: 'plane'}).uniformBufferKey).toBe(tileID.key);
     });
+
+    test('hands draws the camera with the warp for tiles of the mercator grid, and the flat one for the plane\'s own', () => {
+        const {frameRenderContext, projectedCamera} = equalEarthFrame();
+        const warped = frameRenderContext.projectedCamera as any;
+        expect(warped.tileWarp).toBe(equalEarthWorldCoordinateHelper.mercatorTileWarp);
+        expect(frameRenderContext.projectedCamera).toBe(warped);
+        frameRenderContext.currentTileGrid = 'plane';
+        expect(frameRenderContext.projectedCamera).toBe(projectedCamera);
+    });
+});
+
+describe('a frame on mercator', () => {
+    test('hands draws the camera it was given', () => {
+        const {projectedCamera, context} = createTestCamera({width: 512, height: 512});
+        const frameRenderContext = new FrameRenderContext({projectedCamera, worldCoordinateHelper: context.worldCoordinateHelper, terrain: null, data: createFrameRenderData(), context: null, programCache: null, currentPass: 'translucent', projection: null});
+        expect(frameRenderContext.projectedCamera).toBe(projectedCamera);
+    });
 });

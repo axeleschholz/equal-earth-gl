@@ -768,6 +768,7 @@ export class TileManager extends Evented<SourceEventType> {
 
         if (!tile) {
             tile = new Tile(tileID, this._source.tileSize * tileID.overscaleFactor());
+            tile.tileGrid = this._source.tileGrid;
             this._loadTile(tile, tileID.key, tile.state, false);
         }
 

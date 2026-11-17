@@ -11,6 +11,7 @@ import {toEvaluationFeature} from '../data/evaluation_feature.ts';
 import {EvaluationParameters} from '../style/evaluation_parameters.ts';
 import {rtlMainThreadPluginFactory} from '../source/rtl_text_plugin_main_thread.ts';
 
+import type {TileGrid} from '../geo/projection/tile_warp.ts';
 import type {SourceFeatureState} from '../source/source_state.ts';
 import type {Bucket} from '../data/bucket.ts';
 import type {StyleLayer} from '../style/style_layer.ts';
@@ -141,6 +142,9 @@ export class Tile {
      * @param tileID - the tile ID
      * @param size - The tile size
      */
+    /** The grid this tile is cut in when its source has its own, see `Source.tileGrid`. */
+    tileGrid: TileGrid | undefined;
+
     constructor(tileID: OverscaledTileID, size: number) {
         this.tileID = tileID;
         this.uid = uniqueId();

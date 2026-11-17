@@ -632,6 +632,7 @@ export class MercatorCameraMath implements CameraMath {
     }
 
     projectTileCoordinates(projectedCamera: MercatorProjectedCamera, x: number, y: number, unwrappedTileID: UnwrappedTileID, elevation?: number): PointProjection {
+        if (projectedCamera.tileWarp) return projectWarpedTileCoordinates(projectedCamera, x, y, unwrappedTileID, elevation);
         const matrix = calculatePosMatrix(projectedCamera, unwrappedTileID);
         let pos;
         if (elevation != null) { // slow because of handle z-index
@@ -675,7 +676,9 @@ export class MercatorCameraMath implements CameraMath {
         };
     }
 
-    getFastPathSimpleProjectionMatrix(projectedCamera: MercatorProjectedCamera, tileID: OverscaledTileID): mat4 {
+    /** The matrix that projects a tile, or undefined for a camera with a tile warp, which no matrix stands in for. */
+    getFastPathSimpleProjectionMatrix(projectedCamera: MercatorProjectedCamera, tileID: OverscaledTileID): mat4 | undefined {
+        if (projectedCamera.tileWarp) return undefined;
         return calculatePosMatrix(projectedCamera, tileID);
     }
 
@@ -690,4 +693,22 @@ export class MercatorCameraMath implements CameraMath {
     getCameraQueryGeometry(projectedCamera: MercatorProjectedCamera, queryGeometry: Point[]): Point[] {
         return cameraPointQueryGeometry(projectedCamera, queryGeometry);
     }
+}
+
+const scratchWarped: [number, number] = [0, 0];
+
+/**
+ * Projects a position in a tile of the mercator grid with a camera that has a tile warp: the warp takes it onto the
+ * plane, as the projection's shaders do, and the camera takes it from there to clip space.
+ */
+function projectWarpedTileCoordinates(projectedCamera: MercatorProjectedCamera, x: number, y: number, unwrappedTileID: UnwrappedTileID, elevation?: number): PointProjection {
+    const [worldX, worldY] = projectedCamera.tileWarp.warp(unwrappedTileID.canonical, x, y, scratchWarped);
+    const pos = [worldX * projectedCamera.worldSize, worldY * projectedCamera.worldSize, elevation ?? 0, 1] as vec4;
+    vec4.transformMat4(pos, pos, projectedCamera.modelViewProjectionMatrix);
+    const w = pos[3];
+    return {
+        point: new Point(pos[0] / w, pos[1] / w),
+        signedDistanceFromCamera: w,
+        isOccluded: false
+    };
 }

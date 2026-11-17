@@ -8,6 +8,7 @@ import type {vec3, vec4} from 'gl-matrix';
 import type {Frustum} from '../util/primitives/frustum.ts';
 import type {Mat4f32, Mat4f64} from '../util/util.ts';
 import type {WorldCoordinateHelper} from '../geo/world_types.ts';
+import type {TileWarp} from '../geo/projection/tile_warp.ts';
 
 /**
  * @internal
@@ -93,6 +94,12 @@ export type MercatorProjectedCamera = ProjectedCameraFields & {
     readonly pixelMatrixInverse: mat4;
     /** The model view projection matrix with its near plane at the center, for the depth of the fog. */
     readonly fogMatrix: mat4;
+    /**
+     * How tiles of the mercator grid lie on this camera's plane, on a camera that such tiles are projected with on
+     * a plane they are warped onto, see `withTileWarp`. A position in a tile then goes through the warp to the
+     * screen. Left out on every other camera, for which a tile is a square of the plane.
+     */
+    readonly tileWarp?: TileWarp;
 };
 
 /** @internal A {@link ProjectedCamera} on the vertical perspective: a globe seen from a point in space. */

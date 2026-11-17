@@ -8,6 +8,7 @@ import {shaders} from '../shaders/shaders.ts';
 import {MercatorShaderDefine, MercatorShaderVariantKey} from '../geo/projection/mercator_projection.ts';
 import {getCameraMath} from '../camera/camera_math_factory.ts';
 import {getWarpedProjectionData} from '../geo/projection/warped_projection_data.ts';
+import {withTileWarp} from '../camera/warped_camera.ts';
 import {resolveTileGrid, type TileGrid} from '../geo/projection/tile_warp.ts';
 
 import type {Terrain, TerrainData} from './terrain.ts';
@@ -110,7 +111,8 @@ export class FrameRenderContext {
      * mercator shader variant.
      */
     currentTileGrid: TileGrid | undefined;
-    readonly projectedCamera: ProjectedCamera;
+    /** The camera of the frame, see {@link projectedCamera}. */
+    private readonly frameCamera: ProjectedCamera;
     /** The world mapping the camera was projected with. */
     readonly worldCoordinateHelper: WorldCoordinateHelper;
     readonly terrain: Terrain | null;
@@ -124,7 +126,7 @@ export class FrameRenderContext {
     private tileClippingMaskIDs: Record<string, number> = {};
 
     constructor(options: FrameRenderContextOptions) {
-        this.projectedCamera = options.projectedCamera;
+        this.frameCamera = options.projectedCamera;
         this.worldCoordinateHelper = options.worldCoordinateHelper;
         this.terrain = options.terrain;
         this.data = options.data;
@@ -135,6 +137,14 @@ export class FrameRenderContext {
     }
 
     /**
+     * The camera the tiles being drawn are projected with on the CPU: the frame's, or on a plane that mercator tiles
+     * are warped onto, for tiles of the mercator grid, the frame's with that warp, see `withTileWarp`.
+     */
+    get projectedCamera(): ProjectedCamera {
+        return withTileWarp(this.frameCamera, this.worldCoordinateHelper, this.currentTileGrid);
+    }
+
+    /**
      * What the projection's shaders need to draw a tile. On a plane that mercator tiles are warped onto, a tile of
      * the mercator grid gets the data of its warp; `tileGrid` is the grid of the tile's source when that is not the
      * one the map's sources are taken to be cut in.
@@ -142,9 +152,9 @@ export class FrameRenderContext {
     getProjectionDataForTile(tileID: OverscaledTileID, options: {aligned?: boolean; applyTerrainMatrix?: boolean; tileGrid?: TileGrid} = {}): RendererProjectionData {
         const warp = this.worldCoordinateHelper.mercatorTileWarp;
         if (warp && !this.isRenderingToTexture && resolveTileGrid(options.tileGrid ?? this.currentTileGrid, this.worldCoordinateHelper) === 'mercator') {
-            return getWarpedProjectionData(this.projectedCamera as MercatorProjectedCamera, tileID, warp);
+            return getWarpedProjectionData(this.frameCamera as MercatorProjectedCamera, tileID, warp);
         }
-        const projectionData = getCameraMath(this.projectedCamera).getProjectionData(this.projectedCamera, {
+        const projectionData = getCameraMath(this.frameCamera).getProjectionData(this.frameCamera, {
             overscaledTileID: tileID,
             aligned: options.aligned,
             applyGlobeMatrix: !this.isRenderingToTexture,
