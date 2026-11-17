@@ -11,6 +11,7 @@ import type {Frustum} from '../../util/primitives/frustum.ts';
 import type {Terrain} from '../../render/terrain.ts';
 import type {ProjectedCamera} from '../../camera/projected_camera.ts';
 import type {WorldCoordinateHelper} from '../world_types.ts';
+import type {TileGrid} from './tile_warp.ts';
 
 type CoveringTilesResult = {
     tileID: OverscaledTileID;
@@ -68,6 +69,11 @@ export type CoveringTilesOptionsInternal = CoveringTilesOptions & {
      * content are not dropped while that content is still visible.
      */
     maxContentElevation?: number;
+    /**
+     * The grid the source's tiles are cut in, when it is not the one the map's sources are taken to be cut in,
+     * see {@link WorldCoordinateHelper.sourceTileGrid}.
+     */
+    tileGrid?: TileGrid;
 };
 
 /**
@@ -287,7 +293,7 @@ export function coveringTiles(projectedCamera: ProjectedCamera, worldCoordinateH
     if (plane && options.maxContentElevation > 0) {
         ({frustum, plane} = expandCullingToContentElevation(frustum, plane, projectedCamera.cameraPosition, options.maxContentElevation));
     }
-    const detailsProvider = getCoveringTilesDetailsProvider(projectedCamera);
+    const detailsProvider = getCoveringTilesDetailsProvider(projectedCamera, worldCoordinateHelper, options.tileGrid);
     const center = detailsProvider.getCenter(projectedCamera);
     const cameraCoord = cameraMercatorCoordinate(projectedCamera, worldCoordinateHelper, center);
     const centerCoord = worldCoordinateHelper.worldFromLngLat(center.lng, center.lat, projectedCamera.elevation);
@@ -295,6 +301,7 @@ export function coveringTiles(projectedCamera: ProjectedCamera, worldCoordinateH
     const allowVariableZoom = detailsProvider.allowVariableZoom(projectedCamera, options);
     
     const desiredZ = coveringZoomLevel(projectedCamera, options);
+    const unroundedZ = projectedCamera.zoom + scaleZoom(projectedCamera.tileSize / options.tileSize);
     const minZoom = options.minzoom || 0;
     const maxZoom = options.maxzoom !== undefined ? options.maxzoom : projectedCamera.maxZoom;
     const nominalZ = Math.min(Math.max(0, desiredZ), maxZoom);
@@ -358,6 +365,9 @@ export function coveringTiles(projectedCamera: ProjectedCamera, worldCoordinateH
                 distanceZ,
                 distanceToCenter3d,
                 projectedCamera.fov);
+        }
+        if (detailsProvider.getTileZoomOffset) {
+            thisTileDesiredZ = (allowVariableZoom ? thisTileDesiredZ : unroundedZ) + detailsProvider.getTileZoomOffset(tileID);
         }
         thisTileDesiredZ = (options.roundZoom ? Math.round : Math.floor)(thisTileDesiredZ);
         thisTileDesiredZ = Math.max(0, thisTileDesiredZ);

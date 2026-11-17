@@ -188,6 +188,7 @@ class MercatorWorldCoordinateHelper implements WorldCoordinateHelper {
     readonly wraps = true;
     readonly sourceTileGrid = 'mercator';
     readonly worldBounds = [0, 0, 1, 1] as const;
+    readonly mercatorTileWarp = null;
     readonly tileMatrixSet = mercatorTileMatrixSet;
 }
 

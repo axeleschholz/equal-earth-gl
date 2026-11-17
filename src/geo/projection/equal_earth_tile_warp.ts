@@ -1,7 +1,6 @@
 import {EXTENT} from '../../data/extent.ts';
 import {latFromMercatorY} from '../mercator_coordinate.ts';
-import {EQUAL_EARTH_HALF_WIDTH, equalEarthJacobian, equalEarthParallel} from './equal_earth_math.ts';
-import {equalEarthWorldCoordinateHelper} from './equal_earth_world.ts';
+import {EQUAL_EARTH_HALF_HEIGHT, EQUAL_EARTH_HALF_WIDTH, equalEarthJacobian, equalEarthParallel} from './equal_earth_math.ts';
 
 import type {TileWarp} from './tile_warp.ts';
 
@@ -151,12 +150,11 @@ class EqualEarthTileWarp implements TileWarp {
         if (north > 0 && south < 0) widest = equalEarthParallel(0, this._parallel)[0];
         const minX = west * (west < 0 ? widest : narrowest);
         const maxX = east * (east > 0 ? widest : narrowest);
-        const worldBounds = equalEarthWorldCoordinateHelper.worldBounds;
         return [
             Math.max(0, 0.5 + minX / WORLD_METERS),
-            tile.y === 0 ? worldBounds[1] : 0.5 - northY / WORLD_METERS,
+            tile.y === 0 ? 0.5 - EQUAL_EARTH_HALF_HEIGHT / WORLD_METERS : 0.5 - northY / WORLD_METERS,
             Math.min(1, 0.5 + maxX / WORLD_METERS),
-            tile.y === tiles - 1 ? worldBounds[3] : 0.5 - southY / WORLD_METERS,
+            tile.y === tiles - 1 ? 0.5 + EQUAL_EARTH_HALF_HEIGHT / WORLD_METERS : 0.5 - southY / WORLD_METERS,
         ];
     }
 

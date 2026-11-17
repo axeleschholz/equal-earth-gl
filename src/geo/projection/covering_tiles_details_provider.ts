@@ -47,4 +47,11 @@ export interface CoveringTilesDetailsProvider {
      * Whether to allow world copies to be rendered.
      */
     allowWorldCopies: () => boolean;
+
+    /**
+     * How many zoom levels finer, or when negative coarser, than the view's zoom a tile should be, where the
+     * projection draws tiles larger or smaller than a flat map does. A projection that draws every tile at its
+     * flat size leaves this out.
+     */
+    getTileZoomOffset?: (tileID: {x: number; y: number; z: number}) => number;
 }

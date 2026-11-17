@@ -1,7 +1,7 @@
 import type {LngLat} from './lng_lat.ts';
 import type {MercatorCoordinate} from './mercator_coordinate.ts';
 import type {TileMatrixSet} from './projection/tile_matrix_set.ts';
-import type {TileGrid} from './projection/tile_warp.ts';
+import type {TileGrid, TileWarp} from './projection/tile_warp.ts';
 
 /**
  * @internal
@@ -58,6 +58,11 @@ export interface WorldCoordinateHelper {
      * mercator and a registered CRS, a band across its middle for a world projection that is wider than high.
      */
     worldBounds: readonly [number, number, number, number];
+    /**
+     * How tiles of the mercator grid lie on this plane, or `null` where they need no warp: on mercator, whose
+     * plane is that grid, and on a registered CRS, which has no mercator tiles.
+     */
+    mercatorTileWarp: TileWarp | null;
     /**
      * The quad tile matrix set whose tile 0/0/0 is the world square, in CRS units: EPSG:3857 meters for mercator, the
      * registered definition's `tileMatrixSet` for a planar CRS. The `{bbox}` tile URL token is expressed in it.

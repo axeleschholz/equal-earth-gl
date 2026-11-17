@@ -2,10 +2,11 @@ import {LngLat} from '../lng_lat.ts';
 import {MercatorCoordinate} from '../mercator_coordinate.ts';
 import {clamp} from '../../util/util.ts';
 import {EQUAL_EARTH_HALF_HEIGHT, EQUAL_EARTH_HALF_WIDTH, equalEarthForward, equalEarthInverse} from './equal_earth_math.ts';
+import {equalEarthTileWarp} from './equal_earth_tile_warp.ts';
 
 import type {WorldCoordinateHelper} from '../world_types.ts';
 import type {TileMatrixSet} from './tile_matrix_set.ts';
-import type {TileGrid} from './tile_warp.ts';
+import type {TileGrid, TileWarp} from './tile_warp.ts';
 
 /**
  * @internal
@@ -31,6 +32,7 @@ export class EqualEarthWorldCoordinateHelper implements WorldCoordinateHelper {
     readonly wraps = false;
     readonly sourceTileGrid: TileGrid = 'mercator';
     readonly tileMatrixSet: TileMatrixSet = equalEarthTileMatrixSet;
+    readonly mercatorTileWarp: TileWarp = equalEarthTileWarp;
     readonly worldBounds: readonly [number, number, number, number] = [
         0,
         0.5 - EQUAL_EARTH_HALF_HEIGHT / EXTENT,

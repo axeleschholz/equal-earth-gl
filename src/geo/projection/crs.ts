@@ -86,6 +86,7 @@ export class CRSWorldCoordinateHelper implements WorldCoordinateHelper {
     /** Every tile source of a map in a registered CRS serves tiles of its tile matrix set. */
     readonly sourceTileGrid = 'plane';
     readonly worldBounds = [0, 0, 1, 1] as const;
+    readonly mercatorTileWarp = null;
 
     constructor(crs: CRS) {
         this._crs = crs;
