@@ -36,17 +36,24 @@ describe('a map in equal-earth', () => {
         expect(lat).toBeCloseTo(40.979898, 4);
     });
 
-    test('answers a rendered query on a mercator tile source with nothing and a warning, rather than with features from elsewhere', async () => {
+    test('queries the tiles of a mercator tile source with the camera that carries the warp', async () => {
         const {queryRenderedFeatures} = await import('../../source/query_features.ts');
         const {equalEarthWorldCoordinateHelper} = await import('../../geo/projection/equal_earth_world.ts');
+        const {mercatorWorldCoordinateHelper} = await import('../../geo/mercator_coordinate.ts');
+        const {createTestCamera} = await import('../../util/test/util.ts');
+        const {hasTileWarp} = await import('../../camera/warped_camera.ts');
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        const tilesIn = vi.fn(() => []);
-        const tileManager = {id: 'tiles', getSource: () => ({tileGrid: undefined}), tilesIn} as any;
-        const map = createMap();
-        const result = queryRenderedFeatures(tileManager, {}, {}, [], undefined, map.painter ? (map as any)._camera?.projectedCamera ?? (map as any).transform : undefined, equalEarthWorldCoordinateHelper, undefined);
-        expect(result).toEqual({});
-        expect(tilesIn).not.toHaveBeenCalled();
-        expect(warn).toHaveBeenCalledWith(expect.stringContaining('queryRenderedFeatures'));
+        const queried = vi.fn(() => ({}));
+        const tile = {queryRenderedFeatures: queried};
+        const tileID = {wrapped: () => ({key: 'k'}), overscaledZ: 0, canonical: {x: 0, y: 0}, wrap: 0};
+        const tileManager = {id: 'tiles', getSource: () => ({tileGrid: undefined}), getState: () => ({}), tilesIn: () => [{tile, tileID, queryGeometry: [], cameraQueryGeometry: [], scale: 1}]} as any;
+        const {projectedCamera} = createTestCamera({width: 512, height: 512}, {projection: 'mercator', worldCoordinateHelper: equalEarthWorldCoordinateHelper});
+        queryRenderedFeatures(tileManager, {}, {}, [], undefined, projectedCamera, equalEarthWorldCoordinateHelper, undefined);
+        expect(queried).toHaveBeenCalledTimes(1);
+        const args = queried.mock.calls[0] as any[];
+        expect(hasTileWarp(args[7])).toBe(true);
+        expect(args[8]).toBe(mercatorWorldCoordinateHelper);
+        expect(warn).not.toHaveBeenCalled();
         warn.mockRestore();
     });
 });

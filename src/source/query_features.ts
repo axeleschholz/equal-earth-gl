@@ -1,7 +1,7 @@
 import {getCameraMath} from '../camera/camera_math_factory.ts';
 import {mercatorWorldCoordinateHelper} from '../geo/mercator_coordinate.ts';
 import {resolveTileGrid, type TileGrid} from '../geo/projection/tile_warp.ts';
-import {warnOnce} from '../util/util.ts';
+import {withTileWarp} from '../camera/warped_camera.ts';
 
 import type Point from '@mapbox/point-geometry';
 import type {TileManager} from '../tile/tile_manager.ts';
@@ -120,8 +120,9 @@ export function featureGeometryHelper(sourceTileGrid: TileGrid | undefined, worl
 }
 
 /**
- * The features of a source that are drawn at a place on screen. A source of mercator tiles on a plane those are
- * warped onto has none yet, with one warning: finding them takes the warp, which the tile query does not apply.
+ * The features of a source that are drawn at a place on screen. The tiles of a source of mercator tiles on a plane
+ * those are warped onto are queried with the camera that carries the warp, see `withTileWarp`, and their features
+ * get their lng/lat from mercator's world mapping, see {@link featureGeometryHelper}.
  */
 export function queryRenderedFeatures(
     tileManager: TileManager,
@@ -133,10 +134,9 @@ export function queryRenderedFeatures(
     worldCoordinateHelper: WorldCoordinateHelper,
     getElevation: undefined | ((id: OverscaledTileID, x: number, y: number) => number)
 ): QueryRenderedFeaturesResults {
-    if (worldCoordinateHelper.mercatorTileWarp && featureGeometryHelper(tileManager.getSource().tileGrid, worldCoordinateHelper) !== worldCoordinateHelper) {
-        warnOnce(`queryRenderedFeatures does not yet find the features of tile sources in the ${worldCoordinateHelper.name} projection.`);
-        return {};
-    }
+    const sourceTileGrid = worldCoordinateHelper.mercatorTileWarp ? tileManager.getSource().tileGrid : undefined;
+    const tileCamera = withTileWarp(projectedCamera, worldCoordinateHelper, sourceTileGrid);
+    const geometryHelper = featureGeometryHelper(sourceTileGrid, worldCoordinateHelper);
 
     const has3DLayer = queryIncludes3DLayer(params?.layers ?? null, styleLayers, tileManager.id);
     const maxPitchScaleFactor = getCameraMath(projectedCamera).maxPitchScaleFactor(projectedCamera);
@@ -155,8 +155,8 @@ export function queryRenderedFeatures(
                 tileIn.cameraQueryGeometry,
                 tileIn.scale,
                 params,
-                projectedCamera,
-                worldCoordinateHelper,
+                tileCamera,
+                geometryHelper,
                 maxPitchScaleFactor,
                 getElevation ? (x: number, y: number) => getElevation(tileIn.tileID, x, y) : undefined,
             )

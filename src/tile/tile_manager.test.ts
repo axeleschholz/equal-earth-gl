@@ -5,6 +5,7 @@ import {FadingDirections, FadingRoles, Tile} from './tile.ts';
 import {CanonicalTileID, OverscaledTileID} from './tile_id.ts';
 import {LngLat} from '../geo/lng_lat.ts';
 import Point from '@mapbox/point-geometry';
+import {getCameraMath} from '../camera/camera_math_factory.ts';
 import {ErrorEvent, Event, Evented} from '../util/evented.ts';
 import {extend} from '../util/util.ts';
 import {TileBounds} from './tile_bounds.ts';
@@ -2966,4 +2967,59 @@ describe('TileManager content elevation', () => {
                 await vi.waitFor(() => expect(tileManager.loaded()).toBe(true));
             }
         });
+});
+
+describe('TileManager.tilesIn on a plane that mercator tiles are warped onto', () => {
+    async function equalEarthTiles(center: [number, number], zoom: number) {
+        const {equalEarthWorldCoordinateHelper: helper} = await import('../geo/projection/equal_earth_world.ts');
+        const {projectedCamera} = createTestCamera({width: 512, height: 512, zoom, center}, {projection: 'mercator', worldCoordinateHelper: helper});
+        const tileManager = createTileManager();
+        tileManager._source.loadTile = async (tile) => {
+            tile.state = 'loaded';
+        };
+        const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
+        tileManager.onAdd(undefined);
+        await dataPromise;
+        tileManager.update(projectedCamera, helper);
+        return {tileManager, projectedCamera, helper};
+    }
+
+    /** Where a position in a tile is drawn, in screen pixels. */
+    function drawnAt(projectedCamera: any, helper: any, tileID: OverscaledTileID, point: Point): Point {
+        const [x, y] = helper.mercatorTileWarp.warp(tileID.canonical, point.x, point.y, [0, 0]);
+        const lngLat = helper.lngLatFromWorld(x, y);
+        return getCameraMath(projectedCamera).locationToScreenPoint(projectedCamera, helper, lngLat);
+    }
+
+    test('gives each tile the query point where the tile draws it', async () => {
+        for (const [center, zoom] of [[[20, 40], 2], [[-100, 5], 3], [[10, 80], 6]] as Array<[[number, number], number]>) {
+            const {tileManager, projectedCamera, helper} = await equalEarthTiles(center, zoom);
+            const queryPoint = new Point(300, 200);
+            const around = [new Point(299, 199), new Point(301, 199), new Point(301, 201), new Point(299, 201), new Point(299, 199)];
+            const results = tileManager.tilesIn([queryPoint, ...around], 1, false, projectedCamera, helper);
+            expect(results.length).toBeGreaterThan(0);
+            const inside = results.filter(({queryGeometry}) => queryGeometry[0].x >= 0 && queryGeometry[0].x <= 8192 && queryGeometry[0].y >= 0 && queryGeometry[0].y <= 8192);
+            expect(inside).toHaveLength(1);
+            const drawn = drawnAt(projectedCamera, helper, inside[0].tileID, inside[0].queryGeometry[0]);
+            expect(Math.hypot(drawn.x - queryPoint.x, drawn.y - queryPoint.y)).toBeLessThan(0.5);
+        }
+    });
+
+    test('splits the long sides of a box, whose image in a mercator tile is curved', async () => {
+        const {tileManager, projectedCamera, helper} = await equalEarthTiles([20, 30], 2);
+        const box = [new Point(100, 100), new Point(400, 100), new Point(400, 300), new Point(100, 300), new Point(100, 100)];
+        const results = tileManager.tilesIn(box, 1, false, projectedCamera, helper);
+        expect(results.length).toBeGreaterThan(0);
+        for (const {queryGeometry, tileID} of results) {
+            expect(queryGeometry.length).toBeGreaterThan(12);
+            const first = drawnAt(projectedCamera, helper, tileID, queryGeometry[0]);
+            expect(Math.hypot(first.x - 100, first.y - 100)).toBeLessThan(0.5);
+        }
+    });
+
+    test('finds nothing beside the world', async () => {
+        const {tileManager, projectedCamera, helper} = await equalEarthTiles([-180, 89], 5);
+        expect(tileManager.tilesIn([new Point(5, 5)], 1, false, projectedCamera, helper)).toEqual([]);
+        expect(tileManager.tilesIn([new Point(5, 5), new Point(20, 5), new Point(20, 20), new Point(5, 5)], 1, false, projectedCamera, helper)).toEqual([]);
+    });
 });

@@ -19,8 +19,10 @@ import {backfillDEM} from './tile_manager_raster_dem.ts';
 import {InViewTiles} from './tile_manager_in_view_tiles.ts';
 import {MapSourceDataEvent, type SourceEventType} from '../ui/events.ts';
 import {getCameraMath} from '../camera/camera_math_factory.ts';
+import {mercatorWorldCoordinateHelper} from '../geo/mercator_coordinate.ts';
+import {resolveTileGrid} from '../geo/projection/tile_warp.ts';
 
-import type Point from '@mapbox/point-geometry';
+import Point from '@mapbox/point-geometry';
 import type {Context} from '../webgl/context.ts';
 import type {Source} from '../source/source.ts';
 import type {Map} from '../ui/map.ts';
@@ -910,6 +912,11 @@ export class TileManager extends Evented<SourceEventType> {
      * @param projectedCamera - the camera the query geometry is on the screen of
      * @param worldCoordinateHelper - the world mapping the camera was projected with
      * @returns result items have `{tile, minX, maxX, minY, maxY}`, where min/max bounding values are the given bounds transformed in into the coordinate space of this tile.
+     *
+     * The tiles of a source of mercator tiles on a plane those are warped onto get the geometry in their own, mercator
+     * coordinates: each point goes from the screen to the plane, from there to its lng/lat and on to mercator. The
+     * straight sides of a query box are curves in a mercator tile, so long ones are split first. A geometry that
+     * lies beside the world altogether finds no tiles.
      */
     tilesIn(pointQueryGeometry: Point[], maxPitchScaleFactor: number, has3DLayer: boolean, projectedCamera: ProjectedCamera | undefined = this.projectedCamera, worldCoordinateHelper: WorldCoordinateHelper | undefined = this.worldCoordinateHelper): TileResult[] {
         const tileResults: TileResult[] = [];
@@ -921,7 +928,18 @@ export class TileManager extends Evented<SourceEventType> {
             getCameraMath(projectedCamera).getCameraQueryGeometry(projectedCamera, pointQueryGeometry) :
             pointQueryGeometry;
 
-        const project = (point: Point) => getCameraMath(projectedCamera).screenPointToMercatorCoordinate(projectedCamera, worldCoordinateHelper, point, this.terrain);
+        const cameraMath = getCameraMath(projectedCamera);
+        let project = (point: Point) => cameraMath.screenPointToMercatorCoordinate(projectedCamera, worldCoordinateHelper, point, this.terrain);
+        if (worldCoordinateHelper.mercatorTileWarp && resolveTileGrid(this._source.tileGrid, worldCoordinateHelper) === 'mercator') {
+            if (!pointQueryGeometry.some(point => cameraMath.isPointOnMapSurface(projectedCamera, worldCoordinateHelper, point, this.terrain))) return tileResults;
+            pointQueryGeometry = splitLongEdges(pointQueryGeometry, MAX_WARPED_QUERY_EDGE);
+            const toPlane = project;
+            project = (point: Point) => {
+                const onPlane = toPlane(point);
+                const lngLat = worldCoordinateHelper.lngLatFromWorld(onPlane.x, onPlane.y);
+                return mercatorWorldCoordinateHelper.worldFromLngLat(lngLat.lng, lngLat.lat);
+            };
+        }
         const queryGeometry = this.transformBbox(pointQueryGeometry, project, !allowWorldCopies);
         const cameraQueryGeometry = this.transformBbox(cameraPointQueryGeometry, project, !allowWorldCopies);
 
@@ -1068,4 +1086,25 @@ export class TileManager extends Evented<SourceEventType> {
         }
         return true;
     }
+}
+
+/** The longest a side of a query geometry may be, in screen pixels, before it is split for tiles that are warped. */
+const MAX_WARPED_QUERY_EDGE = 64;
+
+/**
+ * A line or ring with points added along the sides that are longer than `maxLength`, so that none is.
+ */
+function splitLongEdges(points: Point[], maxLength: number): Point[] {
+    if (points.length < 2) return points;
+    const result: Point[] = [points[0]];
+    for (let i = 1; i < points.length; i++) {
+        const from = points[i - 1];
+        const to = points[i];
+        const pieces = Math.ceil(from.dist(to) / maxLength);
+        for (let k = 1; k < pieces; k++) {
+            result.push(new Point(from.x + (to.x - from.x) * k / pieces, from.y + (to.y - from.y) * k / pieces));
+        }
+        result.push(to);
+    }
+    return result;
 }
