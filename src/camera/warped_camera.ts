@@ -25,3 +25,12 @@ export function withTileWarp<C extends ProjectedCamera>(camera: C, worldCoordina
     }
     return warped as C;
 }
+
+/**
+ * @internal
+ * Whether a camera carries a tile warp, see {@link withTileWarp}. What is drawn with such a camera faces the
+ * screen instead of lying on the map, since lying on the map would give it the stretch and shear of the warp.
+ */
+export function hasTileWarp(camera: ProjectedCamera): boolean {
+    return camera.projection === 'mercator' && camera.tileWarp !== undefined;
+}

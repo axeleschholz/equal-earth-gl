@@ -1,0 +1,67 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "Labels along lines at high latitude follow their lines, with letters that keep their shape.",
+      "width": 512,
+      "height": 512
+    }
+  },
+  "center": [
+    20,
+    78
+  ],
+  "zoom": 4,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "glyphs": "local://glyphs/{fontstack}/{range}.pbf",
+  "sources": {
+    "tiles": {
+      "type": "vector",
+      "maxzoom": 14,
+      "tiles": [
+        "local://tiles/14-8802-5374.mvt"
+      ]
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "#f2f2f2"
+      }
+    },
+    {
+      "id": "road",
+      "type": "line",
+      "source": "tiles",
+      "source-layer": "road",
+      "paint": {
+        "line-color": "#bbb",
+        "line-width": 2
+      }
+    },
+    {
+      "id": "roadlabel",
+      "type": "symbol",
+      "source": "tiles",
+      "source-layer": "road_label",
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": "{name}",
+        "text-font": [
+          "Open Sans Semibold",
+          "Arial Unicode MS Bold"
+        ],
+        "text-size": 12
+      },
+      "paint": {
+        "text-color": "#00429d",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    }
+  ]
+}

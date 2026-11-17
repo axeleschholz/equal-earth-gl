@@ -1,0 +1,81 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "Point labels from mercator vector tiles at high latitude sit under their dots and keep their shape.",
+      "width": 512,
+      "height": 512
+    }
+  },
+  "center": [
+    20,
+    78
+  ],
+  "zoom": 3,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "glyphs": "local://glyphs/{fontstack}/{range}.pbf",
+  "sources": {
+    "tiles": {
+      "type": "vector",
+      "maxzoom": 14,
+      "tiles": [
+        "local://tiles/14-8802-5374.mvt"
+      ]
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "#f2f2f2"
+      }
+    },
+    {
+      "id": "road",
+      "type": "line",
+      "source": "tiles",
+      "source-layer": "road",
+      "paint": {
+        "line-color": "#bbb",
+        "line-width": 2
+      }
+    },
+    {
+      "id": "dots",
+      "type": "circle",
+      "source": "tiles",
+      "source-layer": "poi_label",
+      "paint": {
+        "circle-radius": 2,
+        "circle-color": "#d7301f"
+      }
+    },
+    {
+      "id": "poi",
+      "type": "symbol",
+      "source": "tiles",
+      "source-layer": "poi_label",
+      "layout": {
+        "text-field": "{name}",
+        "text-font": [
+          "Open Sans Semibold",
+          "Arial Unicode MS Bold"
+        ],
+        "text-size": 11,
+        "text-anchor": "top",
+        "text-offset": [
+          0,
+          0.3
+        ]
+      },
+      "paint": {
+        "text-color": "#000",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    }
+  ]
+}

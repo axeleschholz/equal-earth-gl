@@ -11,7 +11,10 @@ import {TextAnchorEnum, type TextAnchor} from '../style/style_layer/variable_tex
 import {translatePosition, warnOnce} from '../util/util.ts';
 import {symbolInstance as symbolInstanceLayout} from '../data/bucket/symbol_attributes.ts';
 import {getCameraMath} from '../camera/camera_math_factory.ts';
+import {hasTileWarp, withTileWarp} from '../camera/warped_camera.ts';
 
+import type {TileGrid} from '../geo/projection/tile_warp.ts';
+import type {WorldCoordinateHelper} from '../geo/world_types.ts';
 import type {mat4} from 'gl-matrix';
 import type {FeatureKey, PlacedBox, PlacedCircles} from './collision_index.ts';
 import type {StyleLayer} from '../style/style_layer.ts';
@@ -167,6 +170,8 @@ type TileLayerParameters = {
         uSizeT: number;
     };
     collisionGroup: CollisionGroup;
+    /** The grid of the tile the bucket is from, see `Tile.tileGrid`. */
+    tileGrid: TileGrid | undefined;
 };
 
 export type BucketPart = {
@@ -224,8 +229,28 @@ export class Placement {
         icon: number[];
     }>>;
     lastOpacityInputs: WeakMap<SymbolBucket, OpacityInputs>;
+    /** The camera the placement was made for; {@link projectedCamera} is this one or its copy with a tile warp. */
+    private readonly _frameCamera: ProjectedCamera;
+    private readonly _worldCoordinateHelper: WorldCoordinateHelper | undefined;
 
-    constructor(projectedCamera: ProjectedCamera, terrain: Terrain, fadeDuration: number, crossSourceCollisions: boolean, prevPlacement?: Placement) {
+    /**
+     * Makes the camera of a tile's grid the one this placement and its collision index project with, until the
+     * next tile: the placement's own, or on a plane that mercator tiles are warped onto, for a tile of that grid,
+     * its copy with the warp.
+     */
+    private _useCameraOfTileGrid(tileGrid: TileGrid | undefined): void {
+        const camera = this._worldCoordinateHelper ? withTileWarp(this._frameCamera, this._worldCoordinateHelper, tileGrid) : this._frameCamera;
+        this.projectedCamera = camera;
+        this.collisionIndex.projectedCamera = camera;
+    }
+
+    /**
+     * @param worldCoordinateHelper - the world mapping the camera was projected with; with it, the symbols of each
+     * tile are projected with the camera of that tile's grid, see `withTileWarp`
+     */
+    constructor(projectedCamera: ProjectedCamera, terrain: Terrain, fadeDuration: number, crossSourceCollisions: boolean, prevPlacement?: Placement, worldCoordinateHelper?: WorldCoordinateHelper) {
+        this._frameCamera = projectedCamera;
+        this._worldCoordinateHelper = worldCoordinateHelper;
         this.projectedCamera = projectedCamera;
         this.terrain = terrain;
         this.collisionIndex = new CollisionIndex(this.projectedCamera);
@@ -259,6 +284,7 @@ export class Placement {
     }
 
     getBucketParts(results: BucketPart[], styleLayer: StyleLayer, tile: Tile, sortAcrossTiles: boolean): void {
+        this._useCameraOfTileGrid(tile.tileGrid);
         const symbolBucket = (tile.getBucket(styleLayer) as SymbolBucket);
         const bucketFeatureIndex = tile.latestFeatureIndex;
         if (!symbolBucket || !bucketFeatureIndex || styleLayer.id !== symbolBucket.layerIds[0])
@@ -313,7 +339,8 @@ export class Placement {
             holdingForFade: tile.holdingForSymbolFade(),
             collisionBoxArray,
             partiallyEvaluatedTextSize: symbolSize.evaluateSizeForZoom(symbolBucket.textSizeData, this.projectedCamera.zoom),
-            collisionGroup: this.collisionGroups.get(symbolBucket.sourceID)
+            collisionGroup: this.collisionGroups.get(symbolBucket.sourceID),
+            tileGrid: tile.tileGrid
         };
 
         if (sortAcrossTiles) {
@@ -442,8 +469,10 @@ export class Placement {
             holdingForFade,
             collisionBoxArray,
             partiallyEvaluatedTextSize,
-            collisionGroup
+            collisionGroup,
+            tileGrid
         } = bucketPart.parameters;
+        this._useCameraOfTileGrid(tileGrid);
 
         const textOptional = layout.get('text-optional');
         const iconOptional = layout.get('icon-optional');
@@ -452,7 +481,7 @@ export class Placement {
         const iconOverlapMode = getOverlapMode(layout, 'icon-overlap', 'icon-allow-overlap');
         const iconAlwaysOverlap = iconOverlapMode === 'always';
         const rotateWithMap = layout.get('text-rotation-alignment') === 'map';
-        const pitchWithMap = layout.get('text-pitch-alignment') === 'map';
+        const pitchWithMap = layout.get('text-pitch-alignment') === 'map' && !hasTileWarp(this.projectedCamera);
         const hasIconTextFit = layout.get('icon-text-fit') !== 'none';
         const zOrderByViewportY = layout.get('symbol-z-order') === 'viewport-y';
         const heightAnchorGround = layout.get('symbol-height-anchor') === 'ground';
@@ -1047,6 +1076,7 @@ export class Placement {
     updateLayerOpacities(styleLayer: StyleLayer, tiles: Tile[]): void {
         const seenCrossTileIDs = {};
         for (const tile of tiles) {
+            this._useCameraOfTileGrid(tile.tileGrid);
             const symbolBucket = tile.getBucket(styleLayer) as SymbolBucket;
             if (!symbolBucket || !tile.latestFeatureIndex || styleLayer.id !== symbolBucket.layerIds[0]) continue;
 
@@ -1114,7 +1144,7 @@ export class Placement {
         const iconAllowOverlap = layout.get('icon-allow-overlap');
         const hasVariablePlacement = layer._unevaluatedLayout.hasValue('text-variable-anchor') || layer._unevaluatedLayout.hasValue('text-variable-anchor-offset');
         const rotateWithMap = layout.get('text-rotation-alignment') === 'map';
-        const pitchWithMap = layout.get('text-pitch-alignment') === 'map';
+        const pitchWithMap = layout.get('text-pitch-alignment') === 'map' && !hasTileWarp(this.projectedCamera);
         const hasIconTextFit = layout.get('icon-text-fit') !== 'none';
         // If allow-overlap is true, we can show symbols before placement runs on them
         // But we have to wait for placement if we potentially depend on a paired icon/text

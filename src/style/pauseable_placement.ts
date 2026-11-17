@@ -2,6 +2,7 @@ import {now} from '../util/time_control.ts';
 import {Placement} from '../symbol/placement.ts';
 import {isSymbolStyleLayer, type SymbolStyleLayer} from './style_layer/symbol_style_layer.ts';
 
+import type {WorldCoordinateHelper} from '../geo/world_types.ts';
 import type {StyleLayer} from './style_layer.ts';
 import type {Tile} from '../tile/tile.ts';
 import type {BucketPart} from '../symbol/placement.ts';
@@ -75,9 +76,10 @@ export class PauseablePlacement {
         showCollisionBoxes: boolean,
         fadeDuration: number,
         crossSourceCollisions: boolean,
-        prevPlacement?: Placement
+        prevPlacement?: Placement,
+        worldCoordinateHelper?: WorldCoordinateHelper
     ) {
-        this.placement = new Placement(projectedCamera, terrain, fadeDuration, crossSourceCollisions, prevPlacement);
+        this.placement = new Placement(projectedCamera, terrain, fadeDuration, crossSourceCollisions, prevPlacement, worldCoordinateHelper);
         this._currentPlacementIndex = order.length - 1;
         this._forceFullPlacement = forceFullPlacement;
         this._showCollisionBoxes = showCollisionBoxes;

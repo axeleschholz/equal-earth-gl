@@ -20,6 +20,7 @@ import {
     symbolTextAndIconUniformValues
 } from '../program/symbol_program.ts';
 import {getCameraMath} from '../../camera/camera_math_factory.ts';
+import {hasTileWarp} from '../../camera/warped_camera.ts';
 
 import type {FrameRenderContext} from '../../render/frame_render_context.ts';
 import type {Painter} from '../../render/painter.ts';
@@ -136,7 +137,7 @@ function updateVariableAnchors(coords: OverscaledTileID[],
     const terrain = frameRenderContext.terrain;
     const variableOffsets = frameRenderContext.data.variableOffsets;
     const rotateWithMap = rotationAlignment === 'map';
-    const pitchWithMap = pitchAlignment === 'map';
+    const pitchWithMap = pitchAlignment === 'map' && !hasTileWarp(projectedCamera);
 
     for (const coord of coords) {
         const tile = tileManager.getTile(coord);
@@ -314,7 +315,7 @@ function drawLayerSymbols(
     const projectedCamera = frameRenderContext.projectedCamera;
 
     const rotateWithMap = rotationAlignment === 'map';
-    const pitchWithMap = pitchAlignment === 'map';
+    const pitchWithMap = pitchAlignment === 'map' && !hasTileWarp(projectedCamera);
     const alongLine = rotationAlignment !== 'viewport' && layer.layout.get('symbol-placement') !== 'point';
     // Line label rotation happens in `updateLineLabels`
     // Pitched point labels are automatically rotated by the pitchedLabelPlaneMatrix projection

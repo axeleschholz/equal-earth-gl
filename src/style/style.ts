@@ -1988,7 +1988,7 @@ export class Style extends Evented<MapEventType> {
         if (forceFullPlacement || !this.pauseablePlacement || (placementSettled && (placementInputsChanged || this.placement.stale))) {
             this._symbolPlacementTriggered = false;
             this._placedProjectionTransition = this.projection?.transitionState;
-            this.pauseablePlacement = new PauseablePlacement(projectedCamera, this.map.terrain, this._order, forceFullPlacement, showCollisionBoxes, fadeDuration, crossSourceCollisions, this.placement);
+            this.pauseablePlacement = new PauseablePlacement(projectedCamera, this.map.terrain, this._order, forceFullPlacement, showCollisionBoxes, fadeDuration, crossSourceCollisions, this.placement, worldCoordinateHelper);
             this._layerOrderChanged = false;
         }
 
