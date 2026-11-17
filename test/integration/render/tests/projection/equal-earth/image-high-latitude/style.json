@@ -1,0 +1,96 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "An image source at high latitude, away from the central meridian, fills the outline a GeoJSON line draws through its four corners.",
+      "width": 512,
+      "height": 512
+    }
+  },
+  "center": [
+    105,
+    66
+  ],
+  "zoom": 2,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "sources": {
+    "image": {
+      "type": "image",
+      "coordinates": [
+        [
+          60,
+          80
+        ],
+        [
+          150,
+          80
+        ],
+        [
+          150,
+          50
+        ],
+        [
+          60,
+          50
+        ]
+      ],
+      "url": "local://image/0.png"
+    },
+    "outline": {
+      "type": "geojson",
+      "data": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            60,
+            80
+          ],
+          [
+            150,
+            80
+          ],
+          [
+            150,
+            50
+          ],
+          [
+            60,
+            50
+          ],
+          [
+            60,
+            80
+          ]
+        ]
+      }
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "#dddddd"
+      }
+    },
+    {
+      "id": "image",
+      "type": "raster",
+      "source": "image",
+      "paint": {
+        "raster-fade-duration": 0
+      }
+    },
+    {
+      "id": "outline",
+      "type": "line",
+      "source": "outline",
+      "paint": {
+        "line-color": "#ff0000",
+        "line-width": 2
+      }
+    }
+  ]
+}

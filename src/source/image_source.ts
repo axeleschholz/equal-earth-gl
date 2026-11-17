@@ -14,6 +14,7 @@ import {
 } from '../webgl/program/raster_program.ts';
 import {mat2} from 'gl-matrix';
 import {createTileMeshWithBuffers} from '../util/create_tile_mesh.ts';
+import {featureGeometryHelper} from './query_features.ts';
 
 import type {Source} from './source.ts';
 import type {MercatorCoordinate} from '../geo/mercator_coordinate.ts';
@@ -421,6 +422,15 @@ export class ImageSource extends Evented<SourceEventType> implements Source {
      * The coordinates start at the top left corner of the image and proceed in clockwise order.
      * They do not have to represent a rectangle.
      */
+    /**
+     * The corners are placed in the tile grid of the map's projection, so they are placed again when it changes.
+     * The tile is redrawn from the image the source holds, so there is nothing to make anew.
+     */
+    onProjectionChange(): boolean {
+        if (this.coordinates && this.map?.style?.projection) this.setCoordinates(this.coordinates);
+        return false;
+    }
+
     setCoordinates(coordinates: Coordinates): this {
         this.coordinates = coordinates;
 
@@ -428,8 +438,9 @@ export class ImageSource extends Evented<SourceEventType> implements Source {
         // and create a buffer with the corner coordinates. These coordinates
         // may be outside the tile, because raster tiles aren't clipped when rendering.
 
-        // transform the geo coordinates into (zoom 0) tile space coordinates of the map's projection
-        const worldCoordinateHelper = this.map.style.projection.worldCoordinateHelper;
+        // transform the geo coordinates into (zoom 0) tile space coordinates of the grid the image's tile is in:
+        // the map projection's, or mercator's on a plane that mercator tiles are warped onto
+        const worldCoordinateHelper = featureGeometryHelper(undefined, this.map.style.projection.worldCoordinateHelper);
         const cornerCoords = coordinates.map(coordinate => {
             const lngLat = LngLat.convert(coordinate);
             return worldCoordinateHelper.worldFromLngLat(lngLat.lng, lngLat.lat);

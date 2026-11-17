@@ -1,0 +1,96 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "An image source whose corners are not a lng/lat box keeps its corners where a GeoJSON line puts them.",
+      "width": 512,
+      "height": 512
+    }
+  },
+  "center": [
+    18,
+    25
+  ],
+  "zoom": 2,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "sources": {
+    "image": {
+      "type": "image",
+      "coordinates": [
+        [
+          -20,
+          40
+        ],
+        [
+          40,
+          55
+        ],
+        [
+          55,
+          10
+        ],
+        [
+          -5,
+          -5
+        ]
+      ],
+      "url": "local://image/0.png"
+    },
+    "outline": {
+      "type": "geojson",
+      "data": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -20,
+            40
+          ],
+          [
+            40,
+            55
+          ],
+          [
+            55,
+            10
+          ],
+          [
+            -5,
+            -5
+          ],
+          [
+            -20,
+            40
+          ]
+        ]
+      }
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "#dddddd"
+      }
+    },
+    {
+      "id": "image",
+      "type": "raster",
+      "source": "image",
+      "paint": {
+        "raster-fade-duration": 0
+      }
+    },
+    {
+      "id": "outline",
+      "type": "line",
+      "source": "outline",
+      "paint": {
+        "line-color": "#ff0000",
+        "line-width": 2
+      }
+    }
+  ]
+}

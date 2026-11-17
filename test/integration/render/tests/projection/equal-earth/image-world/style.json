@@ -1,0 +1,96 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "An image source over most of the world fills the outline a GeoJSON line draws through its four corners.",
+      "width": 512,
+      "height": 256
+    }
+  },
+  "center": [
+    0,
+    0
+  ],
+  "zoom": 0,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "sources": {
+    "image": {
+      "type": "image",
+      "coordinates": [
+        [
+          -170,
+          75
+        ],
+        [
+          170,
+          75
+        ],
+        [
+          170,
+          -75
+        ],
+        [
+          -170,
+          -75
+        ]
+      ],
+      "url": "local://image/0.png"
+    },
+    "outline": {
+      "type": "geojson",
+      "data": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -170,
+            75
+          ],
+          [
+            170,
+            75
+          ],
+          [
+            170,
+            -75
+          ],
+          [
+            -170,
+            -75
+          ],
+          [
+            -170,
+            75
+          ]
+        ]
+      }
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "#dddddd"
+      }
+    },
+    {
+      "id": "image",
+      "type": "raster",
+      "source": "image",
+      "paint": {
+        "raster-fade-duration": 0
+      }
+    },
+    {
+      "id": "outline",
+      "type": "line",
+      "source": "outline",
+      "paint": {
+        "line-color": "#ff0000",
+        "line-width": 2
+      }
+    }
+  ]
+}

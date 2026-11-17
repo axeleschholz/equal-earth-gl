@@ -8,6 +8,7 @@ import {EXTENT} from '../data/extent.ts';
 import {OverscaledTileID} from '../tile/tile_id.ts';
 import {CRSWorldCoordinateHelper, identityCrs} from '../geo/projection/crs.ts';
 import {MercatorProjection} from '../geo/projection/mercator_projection.ts';
+import {EqualEarthProjection} from '../geo/projection/equal_earth_projection.ts';
 
 import type {Texture} from '../webgl/texture.ts';
 import type {ImageSourceSpecification} from '@maplibre/maplibre-gl-style-spec';
@@ -847,6 +848,21 @@ describe('ImageSource', () => {
             source.setCoordinates(coordinates);
 
             expect(source.tileID).toEqual(expect.objectContaining({z: 3, x: 4, y: 2}));
+        });
+
+        test('places the corners with mercator on a plane that mercator tiles are warped onto, and again when the map moves there', () => {
+            const source = createSource({type: 'image', url: '/image.png', coordinates});
+            source.setCoordinates(coordinates);
+            const onMercator = source.tileCoords.map(p => [p.x, p.y]);
+
+            map.style.projection = new EqualEarthProjection();
+            expect(source.onProjectionChange()).toBe(false);
+            expect(source.tileID).toEqual(expect.objectContaining({z: 3, x: 4, y: 2}));
+            expect(source.tileCoords.map(p => [p.x, p.y])).toEqual(onMercator);
+
+            map.style.projection = new MercatorProjection(new CRSWorldCoordinateHelper(identityCrs));
+            source.onProjectionChange();
+            expect(source.tileID).toEqual(expect.objectContaining({z: 2, x: 2, y: 1}));
         });
 
         test('places the corners with the map projection on a planar map, a third of a tile above and below tile 2/2/1', () => {
