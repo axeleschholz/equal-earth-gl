@@ -1,4 +1,4 @@
-import {afterEach, beforeEach, describe, expect, test} from 'vitest';
+import {afterEach, beforeEach, describe, expect, test, vi} from 'vitest';
 import {Style} from './style.ts';
 import {StubMap} from '../util/test/util.ts';
 import {getDefaultProjection, setDefaultProjection} from '../geo/projection/default_projection.ts';
@@ -62,5 +62,15 @@ describe('a style drawn in the default projection', () => {
         setDefaultProjection('mercator');
         const style = await loadStyle();
         expect(style.projection.name).toBe('mercator');
+    });
+
+    test('tells its sources when the projection changes', async () => {
+        const style = await loadStyle({projection: {type: 'mercator'}, sources: {geojson: {type: 'geojson', data: {type: 'FeatureCollection', features: []}}}});
+        const source = style.tileManagers['geojson'].getSource();
+        const onProjectionChange = vi.spyOn(source as any, 'onProjectionChange').mockImplementation(() => {});
+        style.setProjection({type: 'equal-earth'});
+        expect(onProjectionChange).toHaveBeenCalledTimes(1);
+        style.setProjection({type: 'equal-earth'});
+        expect(onProjectionChange).toHaveBeenCalledTimes(1);
     });
 });

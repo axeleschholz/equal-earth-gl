@@ -1,0 +1,46 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "Lines from mercator vector tiles keep their width across the Equal Earth world, toward the poles as at the equator.",
+      "width": 512,
+      "height": 256
+    }
+  },
+  "center": [
+    0,
+    0
+  ],
+  "zoom": 0,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "sources": {
+    "water": {
+      "type": "vector",
+      "maxzoom": 0,
+      "tiles": [
+        "local://tiles/{z}-{x}-{y}.mvt"
+      ]
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "#eeeeee"
+      }
+    },
+    {
+      "id": "coast",
+      "type": "line",
+      "source": "water",
+      "source-layer": "water",
+      "paint": {
+        "line-color": "#d7301f",
+        "line-width": 3
+      }
+    }
+  ]
+}

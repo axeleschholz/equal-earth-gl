@@ -1,5 +1,8 @@
 import {CRSWorldCoordinateHelper, identityCrs, type CRS} from '../geo/projection/crs.ts';
 import {warnOnce} from '../util/util.ts';
+import {equalEarthWorldCoordinateHelper} from '../geo/projection/equal_earth_world.ts';
+
+import type {GeoJSONPlaneHelper} from '../util/geojson_reproject.ts';
 
 /**
  * @experimental
@@ -28,12 +31,22 @@ export function setProjectionHandler(handler: ProjectionHandler | null): void {
 }
 
 /**
- * @internal
- * The world coordinate helper a worker builds for a registered projection the main thread describes: from the
- * definition string through the projection handler, or the built-in identity CRS when there is none. `undefined`,
- * with a warning, when a definition string comes with no handler set.
+ * The planes of the built-in projections that GeoJSON is tiled on in the workers, by projection name. Their world
+ * mappings are part of the library, so they need neither a definition string nor a projection handler.
  */
-export function createWorkerCRSHelper(crs: Pick<CRS, 'name' | 'definition' | 'tileMatrixSet'>): CRSWorldCoordinateHelper | undefined {
+const builtInPlanes: {[name: string]: GeoJSONPlaneHelper} = {
+    [equalEarthWorldCoordinateHelper.name]: equalEarthWorldCoordinateHelper,
+};
+
+/**
+ * @internal
+ * The world coordinate helper a worker uses for the projection the main thread describes: that of a built-in
+ * plane by its name, or for a registered projection the one built from the definition string through the
+ * projection handler, or the built-in identity CRS when there is none. `undefined`, with a warning, when a
+ * definition string comes with no handler set.
+ */
+export function createWorkerCRSHelper(crs: Pick<CRS, 'name' | 'definition' | 'tileMatrixSet'>): GeoJSONPlaneHelper | undefined {
+    if (!crs.definition && Object.hasOwn(builtInPlanes, crs.name)) return builtInPlanes[crs.name];
     if (!crs.definition) return new CRSWorldCoordinateHelper(identityCrs);
     if (!projectionHandler) {
         warnOnce('GeoJSON sources are drawn in the wrong place: no projection handler is set in the workers, see `setProjectionHandler` in the custom CRS guide.');

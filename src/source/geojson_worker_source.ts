@@ -9,7 +9,7 @@ import {WorkerTile} from './worker_tile.ts';
 import {WorkerTileState} from './worker_tile_state.ts';
 import {extend, JSON_PREFIX} from '../util/util.ts';
 import {createWorkerCRSHelper} from './projection_handler_worker.ts';
-import {reprojectGeoJSONFromWorld, reprojectGeoJSONSourceDiffToWorld, reprojectGeoJSONToWorld} from '../util/geojson_reproject.ts';
+import {pathToleranceForMaxZoom, reprojectGeoJSONFromWorld, reprojectGeoJSONSourceDiffToWorld, reprojectGeoJSONToWorld} from '../util/geojson_reproject.ts';
 
 import type {GeoJSONSourceDiff} from './geojson_source_diff.ts';
 import type {WorkerSource, WorkerTileParameters, TileParameters, WorkerTileResult} from './worker_source.ts';
@@ -18,7 +18,8 @@ import type {RequestParameters} from '../util/ajax.ts';
 import type {ClusterIDAndSource, GeoJSONWorkerSourceLoadDataResult, RemoveSourceParams} from '../util/actor_messages.ts';
 import type {IActor} from '../util/actor.ts';
 import type {StyleLayerIndex} from '../style/style_layer_index.ts';
-import type {CRS, CRSWorldCoordinateHelper} from '../geo/projection/crs.ts';
+import type {CRS} from '../geo/projection/crs.ts';
+import type {GeoJSONPlaneHelper} from '../util/geojson_reproject.ts';
 
 /**
  * The geojson worker options that can be passed to the worker
@@ -82,7 +83,7 @@ export class GeoJSONWorkerSource implements WorkerSource {
      * The world coordinate helper of the registered projection the index holds its data in, see
      * {@link LoadGeoJSONParameters.crs}: `undefined` without one, or without a projection handler to build it with.
      */
-    _crsHelper: CRSWorldCoordinateHelper | undefined;
+    _crsHelper: GeoJSONPlaneHelper | undefined;
 
     constructor(actor: IActor, layerIndex: StyleLayerIndex, availableImages: string[], createGeoJSONIndexFunc: typeof createGeoJSONIndex = createGeoJSONIndex) {
         this.actor = actor;
@@ -265,14 +266,14 @@ export class GeoJSONWorkerSource implements WorkerSource {
 
         if (params.data) {
             params.data = this._filterGeoJSON(params.data, params.filter, params.source);
-            const indexData = this._crsHelper ? reprojectGeoJSONToWorld(params.data, this._crsHelper) : params.data;
+            const indexData = this._crsHelper ? reprojectGeoJSONToWorld(params.data, this._crsHelper, pathToleranceForMaxZoom(params.geojsonVtOptions?.maxZoom)) : params.data;
             this._geoJSONIndex = this._createGeoJSONIndex(indexData, params, this._crsHelper !== undefined);
             return;
         }
 
         if (params.dataDiff) {
             this._geoJSONIndex ??= this._createGeoJSONIndex({type: 'FeatureCollection', features: []}, params, this._crsHelper !== undefined);
-            const indexDiff = this._crsHelper ? reprojectGeoJSONSourceDiffToWorld(params.dataDiff, this._crsHelper) : params.dataDiff;
+            const indexDiff = this._crsHelper ? reprojectGeoJSONSourceDiffToWorld(params.dataDiff, this._crsHelper, pathToleranceForMaxZoom(params.geojsonVtOptions?.maxZoom)) : params.dataDiff;
             this._geoJSONIndex.updateData(indexDiff, this._getFilterPredicate(params.filter, params.source));
         }
 

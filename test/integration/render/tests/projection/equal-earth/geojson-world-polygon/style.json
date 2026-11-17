@@ -1,0 +1,61 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "A GeoJSON polygon of the whole world fills the outline of the world, to both poles.",
+      "width": 512,
+      "height": 256
+    }
+  },
+  "center": [
+    0,
+    0
+  ],
+  "zoom": 0,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "sources": {
+    "geojson": {
+      "type": "geojson",
+      "data": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -180,
+              -90
+            ],
+            [
+              -180,
+              90
+            ],
+            [
+              180,
+              90
+            ],
+            [
+              180,
+              -90
+            ],
+            [
+              -180,
+              -90
+            ]
+          ]
+        ]
+      }
+    }
+  },
+  "layers": [
+    {
+      "id": "fill",
+      "type": "fill",
+      "source": "geojson",
+      "paint": {
+        "fill-antialias": false,
+        "fill-color": "#0000ff"
+      }
+    }
+  ]
+}

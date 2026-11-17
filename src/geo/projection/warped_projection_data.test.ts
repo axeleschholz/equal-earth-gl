@@ -113,12 +113,17 @@ describe('getWarpedProjectionData', () => {
         expect(data.tileMercatorCoords).toEqual([0.75, 0.25, 1 / 4 / EXTENT, 1 / 4 / EXTENT]);
     });
 
-    test('clips at the antimeridian in the first and last columns only', () => {
+    test('clips line fragments past the antimeridian in the first and last columns, and past the mercator square in the top and bottom rows', () => {
         const camera = cameraAt(0, 0, 3);
-        expect(getWarpedProjectionData(camera, new OverscaledTileID(3, 0, 3, 0, 2), warp).clipAntimeridian).toBe(true);
-        expect(getWarpedProjectionData(camera, new OverscaledTileID(3, 0, 3, 7, 2), warp).clipAntimeridian).toBe(true);
-        expect(getWarpedProjectionData(camera, new OverscaledTileID(3, 0, 3, 4, 2), warp).clipAntimeridian).toBe(false);
-        expect(getWarpedProjectionData(camera, new OverscaledTileID(0, 0, 0, 0, 0), warp).clipAntimeridian).toBe(true);
+        const clip = (x: number, y: number, z = 3) => getWarpedProjectionData(camera, new OverscaledTileID(z, 0, z, x, y), warp).clipAntimeridian;
+        expect(clip(4, 2)).toBe(0);
+        expect(clip(0, 2)).toBe(1);
+        expect(clip(7, 2)).toBe(1);
+        expect(clip(4, 0)).toBe(2);
+        expect(clip(4, 7)).toBe(4);
+        expect(clip(0, 0)).toBe(3);
+        expect(clip(7, 7)).toBe(5);
+        expect(clip(0, 0, 0)).toBe(7);
     });
 
     test('has a uniform buffer key that tells warped tiles from flat ones', () => {

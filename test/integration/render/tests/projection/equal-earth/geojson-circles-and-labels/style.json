@@ -1,0 +1,179 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "Circle and symbol layers on a GeoJSON source are drawn at their places over mercator vector tiles.",
+      "width": 512,
+      "height": 256
+    }
+  },
+  "center": [
+    0,
+    0
+  ],
+  "zoom": 0,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "sources": {
+    "water": {
+      "type": "vector",
+      "maxzoom": 0,
+      "tiles": [
+        "local://tiles/{z}-{x}-{y}.mvt"
+      ]
+    },
+    "geojson": {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {
+              "name": "Null Island"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                0,
+                0
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "name": "Tokyo"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                139.7,
+                35.7
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "name": "Denver"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                -105,
+                39.7
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "name": "Cape Town"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                18.4,
+                -33.9
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "name": "Svalbard"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                16,
+                78.2
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "name": "South Pole"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                0,
+                -90
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "name": "Suva"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                178.4,
+                -18.1
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "white"
+      }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "water",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "#9ecae1"
+      }
+    },
+    {
+      "id": "circle",
+      "type": "circle",
+      "source": "geojson",
+      "paint": {
+        "circle-radius": 5,
+        "circle-color": "#d7301f"
+      }
+    },
+    {
+      "id": "label",
+      "type": "symbol",
+      "source": "geojson",
+      "layout": {
+        "text-field": [
+          "get",
+          "name"
+        ],
+        "text-font": [
+          "Open Sans Semibold",
+          "Arial Unicode MS Bold"
+        ],
+        "text-size": 11,
+        "text-offset": [
+          0,
+          0.8
+        ],
+        "text-anchor": "top",
+        "text-allow-overlap": true
+      },
+      "paint": {
+        "text-color": "#000"
+      }
+    }
+  ],
+  "glyphs": "local://glyphs/{fontstack}/{range}.pbf"
+}

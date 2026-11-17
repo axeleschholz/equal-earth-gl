@@ -45,8 +45,9 @@ const scratchCenter: [number, number] = [0, 0];
  *   coefficients of the tile's expansion, and `mainMatrix` takes an offset from the warp of the tile's center, in
  *   world units, to clip space. The center is placed in double precision here, so that single precision in the
  *   shader only has to carry the offset within the tile.
- * - `clipAntimeridian` is set for the tiles of the first and last column, whose buffers reach past the edge of
- *   the world.
+ * - `clipAntimeridian` names the sides at which line fragments in the tile's buffer are discarded: the antimeridian
+ *   for the tiles of the first and last column, past which the world ends, and the top or bottom of the mercator
+ *   square for the tiles of the top and bottom row, whose pole caps would show the buffer.
  */
 export function getWarpedProjectionData(projectedCamera: MercatorProjectedCamera, overscaledTileID: OverscaledTileID | null, warp: TileWarp): RendererProjectionData {
     const canonical = overscaledTileID ? overscaledTileID.canonical : {x: 0, y: 0, z: 0};
@@ -61,7 +62,7 @@ export function getWarpedProjectionData(projectedCamera: MercatorProjectedCamera
         clippingPlane: [0, 0, 0, 0],
         projectionTransition: 0,
         fallbackMatrix: null,
-        clipAntimeridian: canonical.x === 0 || canonical.x === tiles - 1,
+        clipAntimeridian: (canonical.x === 0 || canonical.x === tiles - 1 ? 1 : 0) + (canonical.y === 0 ? 2 : 0) + (canonical.y === tiles - 1 ? 4 : 0),
     };
 
     if (canonical.z < warp.expansionMinZoom) {

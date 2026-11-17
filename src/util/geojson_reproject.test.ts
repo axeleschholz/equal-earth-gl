@@ -151,3 +151,15 @@ describe('reprojectGeoJSONSourceDiffToWorld', () => {
         expect(result.update[1]).toBe(diff.update[1]);
     });
 });
+
+describe('reprojectGeoJSONToWorld on the equal-earth plane', () => {
+    test('cuts a line at the antimeridian and follows its path', async () => {
+        const {equalEarthWorldCoordinateHelper} = await import('../geo/projection/equal_earth_world.ts');
+        const {reprojectGeoJSONToWorld} = await import('./geojson_reproject.ts');
+        const result: any = reprojectGeoJSONToWorld({type: 'LineString', coordinates: [[170, 40], [190, 40]]}, equalEarthWorldCoordinateHelper);
+        expect(result.type).toBe('MultiLineString');
+        expect(result.coordinates).toHaveLength(2);
+        const meridian: any = reprojectGeoJSONToWorld({type: 'LineString', coordinates: [[150, -60], [150, 60]]}, equalEarthWorldCoordinateHelper);
+        expect(meridian.coordinates.length).toBeGreaterThan(100);
+    });
+});

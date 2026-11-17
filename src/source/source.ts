@@ -35,6 +35,11 @@ export interface Source {
      * mercator's, or on a map in a registered CRS that of the CRS.
      */
     tileGrid?: TileGrid;
+    /**
+     * Called when the map's projection changed, before the source's tiles are reloaded, for a source whose tiles
+     * depend on the projection beyond how they are drawn.
+     */
+    onProjectionChange?(): void;
     readonly type: string;
     /**
      * The id for the source. Must not be used by any existing source.

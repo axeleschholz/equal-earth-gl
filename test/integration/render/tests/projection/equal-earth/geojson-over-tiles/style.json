@@ -1,0 +1,194 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "A GeoJSON box and line drawn over mercator vector tiles lie where the tiles put the same places.",
+      "width": 512,
+      "height": 256
+    }
+  },
+  "center": [
+    0,
+    0
+  ],
+  "zoom": 0,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "sources": {
+    "water": {
+      "type": "vector",
+      "maxzoom": 0,
+      "tiles": [
+        "local://tiles/{z}-{x}-{y}.mvt"
+      ]
+    },
+    "geojson": {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    112,
+                    -44
+                  ],
+                  [
+                    154,
+                    -44
+                  ],
+                  [
+                    154,
+                    -10
+                  ],
+                  [
+                    112,
+                    -10
+                  ],
+                  [
+                    112,
+                    -44
+                  ]
+                ]
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    -75,
+                    60
+                  ],
+                  [
+                    -10,
+                    60
+                  ],
+                  [
+                    -10,
+                    84
+                  ],
+                  [
+                    -75,
+                    84
+                  ],
+                  [
+                    -75,
+                    60
+                  ]
+                ]
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+              "type": "LineString",
+              "coordinates": [
+                [
+                  -170,
+                  0
+                ],
+                [
+                  170,
+                  0
+                ]
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+              "type": "LineString",
+              "coordinates": [
+                [
+                  20,
+                  -85
+                ],
+                [
+                  20,
+                  85
+                ]
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+              "type": "LineString",
+              "coordinates": [
+                [
+                  -120,
+                  -60
+                ],
+                [
+                  -120,
+                  60
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "white"
+      }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "water",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "#9ecae1"
+      }
+    },
+    {
+      "id": "box",
+      "type": "fill",
+      "source": "geojson",
+      "filter": [
+        "==",
+        "$type",
+        "Polygon"
+      ],
+      "paint": {
+        "fill-color": "rgba(255,0,0,0.35)",
+        "fill-outline-color": "#aa0000"
+      }
+    },
+    {
+      "id": "line",
+      "type": "line",
+      "source": "geojson",
+      "filter": [
+        "==",
+        "$type",
+        "LineString"
+      ],
+      "paint": {
+        "line-color": "#000",
+        "line-width": 2
+      }
+    }
+  ]
+}

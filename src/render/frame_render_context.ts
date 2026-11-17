@@ -104,6 +104,12 @@ export class FrameRenderContext {
     isRenderingToTexture: boolean = false;
     /** Whether a layer composite has already sampled the shared scratch FBO in this frame. */
     layerCompositeSampled: boolean = false;
+    /**
+     * The grid of the tiles being drawn, when the source of the current layer has its own, see `Source.tileGrid`.
+     * On a plane that mercator tiles are warped onto, tiles of the plane's own grid are drawn flat, with the
+     * mercator shader variant.
+     */
+    currentTileGrid: TileGrid | undefined;
     readonly projectedCamera: ProjectedCamera;
     /** The world mapping the camera was projected with. */
     readonly worldCoordinateHelper: WorldCoordinateHelper;
@@ -135,7 +141,7 @@ export class FrameRenderContext {
      */
     getProjectionDataForTile(tileID: OverscaledTileID, options: {aligned?: boolean; applyTerrainMatrix?: boolean; tileGrid?: TileGrid} = {}): RendererProjectionData {
         const warp = this.worldCoordinateHelper.mercatorTileWarp;
-        if (warp && !this.isRenderingToTexture && (options.tileGrid ?? this.worldCoordinateHelper.sourceTileGrid) === 'mercator') {
+        if (warp && !this.isRenderingToTexture && (options.tileGrid ?? this.currentTileGrid ?? this.worldCoordinateHelper.sourceTileGrid) === 'mercator') {
             return getWarpedProjectionData(this.projectedCamera as MercatorProjectedCamera, tileID, warp);
         }
         const projectionData = getCameraMath(this.projectedCamera).getProjectionData(this.projectedCamera, {
@@ -176,11 +182,16 @@ export class FrameRenderContext {
         return this.programCache.getProgram({
             name,
             programConfiguration,
-            projectionShaderVariant: forceSimpleProjection ? MERCATOR_SHADER_VARIANT : this.data.projectionShaderVariant,
+            projectionShaderVariant: forceSimpleProjection || this.drawsFlatOnWarpPlane() ? MERCATOR_SHADER_VARIANT : this.data.projectionShaderVariant,
             showOverdrawInspector: this.data.showOverdrawInspector,
             useTerrain: this.terrain !== null,
             defines
         });
+    }
+
+    /** Whether the tiles being drawn lie flat on a plane that mercator tiles are warped onto, see {@link currentTileGrid}. */
+    private drawsFlatOnWarpPlane(): boolean {
+        return this.currentTileGrid === 'plane' && !!this.worldCoordinateHelper.mercatorTileWarp;
     }
 
     colorModeForRenderPass(): Readonly<ColorMode> {

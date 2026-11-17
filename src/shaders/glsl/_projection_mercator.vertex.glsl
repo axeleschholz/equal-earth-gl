@@ -36,8 +36,8 @@ vec4 projectTileFor3D(vec2 posInTile, float elevation) {
     return projectTileWithElevation(posInTile, elevation);
 }
 
-// The offset in the tile that draws `offset` across a line at the width a flat tile gives it.
-// Tiles are flat or evenly scaled here, so that is the offset itself.
-vec2 projectTileOffset(vec2 posInTile, vec2 offset) {
-    return offset;
+// Projects a point in the tile moved by `extrusion`, the offset in tile units that takes a vertex of a line across
+// the line to its edge. Tiles are flat or evenly scaled here, so that is the projection of their sum.
+vec4 projectTileExtruded(vec2 posInTile, vec2 extrusion) {
+    return projectTile(posInTile + extrusion);
 }

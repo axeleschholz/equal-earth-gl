@@ -1,6 +1,6 @@
 import {clamp} from './util.ts';
+import {projectGeoJSONAlongPaths} from './geojson_plane_paths.ts';
 
-import type {CRSWorldCoordinateHelper} from '../geo/projection/crs.ts';
 import type {GeoJSONSourceDiff} from '../source/geojson_source_diff.ts';
 import type {WorldCoordinateHelper} from '../geo/world_types.ts';
 
@@ -16,6 +16,24 @@ type PositionMapper = (position: GeoJSON.Position) => GeoJSON.Position;
 type LineMapper = (line: GeoJSON.Position[]) => GeoJSON.Position[];
 
 /**
+ * @internal
+ * What moving GeoJSON onto a plane needs of the plane's world mapping: the mapping itself, the latitudes it places,
+ * see `CRSWorldCoordinateHelper.latitudeRange`, and whether lines have to be bent to it.
+ */
+export type GeoJSONPlaneHelper = Pick<WorldCoordinateHelper, 'worldFromLngLat' | 'lngLatFromWorld' | 'bendsMercatorLines'> & {
+    latitudeRange: [number, number];
+};
+
+/**
+ * @internal
+ * How far from its path a line may be drawn on a plane that bends mercator lines, in world units, for data tiled up
+ * to a zoom level: three eighths of a pixel at that zoom, which is what geojson-vt simplifies lines to as well.
+ */
+export function pathToleranceForMaxZoom(maxZoom: number = 18): number {
+    return 0.375 / (512 * Math.pow(2, maxZoom));
+}
+
+/**
  * The longitude step, in degrees, between the positions an edge along a clamped latitude gets, so that it follows the
  * parallel in the projection instead of cutting across it.
  */
@@ -25,14 +43,16 @@ const PARALLEL_STEP = 10;
  * @internal
  * Rewrites every position of a GeoJSON object from the map's lng/lat to the map projection's world coordinates, x and
  * y from 0 to 1 across its world square with y growing down, which geojson-vt tiles with `coordinates: 'unitSquare'`.
- * When the CRS's {@link CRSWorldCoordinateHelper.latitudeRange} leaves latitudes out, the positions of lines and rings
+ * On a plane that bends mercator lines this is {@link projectGeoJSONAlongPaths}, with `pathTolerance`. Otherwise,
+ * when the CRS's `latitudeRange` leaves latitudes out, the positions of lines and rings
  * past it move onto it, and an edge that then runs along it gets a position every {@link PARALLEL_STEP} degrees of
  * longitude. What lies past it, like the opposite pole of a polar projection, which projects to infinity, then ends up
  * along it, off the map. A line or ring within it costs one latitude check per position. Points are left as they
  * are: geojson-vt leaves out the ones outside the world square.
  * Returns a new object; the input is never mutated, and non-coordinate members are carried over as they are.
  */
-export function reprojectGeoJSONToWorld<T extends GeoJSON.GeoJSON>(data: T, crsHelper: CRSWorldCoordinateHelper): T {
+export function reprojectGeoJSONToWorld<T extends GeoJSON.GeoJSON>(data: T, crsHelper: GeoJSONPlaneHelper, pathTolerance: number = pathToleranceForMaxZoom()): T {
+    if (crsHelper.bendsMercatorLines) return projectGeoJSONAlongPaths(data, crsHelper, pathTolerance);
     const toWorld: PositionMapper = ([lng, lat, ...rest]) => {
         const {x, y} = crsHelper.worldFromLngLat(lng, lat);
         return [x, y, ...rest];
@@ -73,7 +93,7 @@ export function reprojectGeoJSONToWorld<T extends GeoJSON.GeoJSON>(data: T, crsH
  * The inverse of {@link reprojectGeoJSONToWorld}: rewrites world coordinates (as returned by the worker for cluster
  * children and leaves) back to the map's lng/lat. Returns a new object.
  */
-export function reprojectGeoJSONFromWorld<T extends GeoJSON.GeoJSON>(data: T, worldCoordinateHelper: WorldCoordinateHelper): T {
+export function reprojectGeoJSONFromWorld<T extends GeoJSON.GeoJSON>(data: T, worldCoordinateHelper: Pick<WorldCoordinateHelper, 'lngLatFromWorld'>): T {
     return mapPositions(data, ([x, y, ...rest]) => {
         const lngLat = worldCoordinateHelper.lngLatFromWorld(x, y);
         return [lngLat.lng, lngLat.lat, ...rest];
@@ -85,14 +105,14 @@ export function reprojectGeoJSONFromWorld<T extends GeoJSON.GeoJSON>(data: T, wo
  * Rewrites the geometries a diff adds or replaces, as {@link reprojectGeoJSONToWorld} does for whole data.
  * Returns a new diff; removals and property changes are carried over as they are.
  */
-export function reprojectGeoJSONSourceDiffToWorld(diff: GeoJSONSourceDiff, crsHelper: CRSWorldCoordinateHelper): GeoJSONSourceDiff {
+export function reprojectGeoJSONSourceDiffToWorld(diff: GeoJSONSourceDiff, crsHelper: GeoJSONPlaneHelper, pathTolerance?: number): GeoJSONSourceDiff {
     const reprojected = {...diff};
     if (diff.add) {
-        reprojected.add = diff.add.map(feature => reprojectGeoJSONToWorld(feature, crsHelper));
+        reprojected.add = diff.add.map(feature => reprojectGeoJSONToWorld(feature, crsHelper, pathTolerance));
     }
     if (diff.update) {
         reprojected.update = diff.update.map(update => update.newGeometry ?
-            {...update, newGeometry: reprojectGeoJSONToWorld(update.newGeometry, crsHelper)} :
+            {...update, newGeometry: reprojectGeoJSONToWorld(update.newGeometry, crsHelper, pathTolerance)} :
             update);
     }
     return reprojected;

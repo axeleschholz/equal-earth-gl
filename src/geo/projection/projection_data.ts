@@ -68,9 +68,12 @@ export type ProjectionData<MainMatrix extends mat4 = mat4, FallbackMatrix extend
      * The z0 tile covers the whole world, so its buffer wraps around the planet onto the tile itself,
      * drawing geometry near the antimeridian twice. Stencil clipping cannot remove this same-pixel overlap,
      * so lines are clipped in the fragment shader instead (fills are clipped during subdivision).
+     * A projection that warps mercator tiles onto a flat plane gives the sides of the tile to clip at instead, as a
+     * sum: 1 for the antimeridian, in the first and last columns of tiles, 2 for the top of the mercator square, in
+     * the top row, and 4 for its bottom, in the bottom row.
      * Uniform name: `u_projection_clip_antimeridian`.
      */
-    clipAntimeridian: boolean;
+    clipAntimeridian: boolean | number;
 };
 
 /**

@@ -29,7 +29,7 @@ function updateProjectionUniformBuffer(buffer: UniformBuffer, projectionData: Pr
     f32.set(projectionData.tileMercatorCoords, offsets.u_projection_tile_mercator_coords);
     f32.set(projectionData.clippingPlane, offsets.u_projection_clipping_plane);
     f32[offsets.u_projection_transition] = projectionData.projectionTransition;
-    buffer.pendingWords[offsets.u_projection_clip_antimeridian] = projectionData.clipAntimeridian ? 1 : 0;
+    buffer.pendingWords[offsets.u_projection_clip_antimeridian] = Number(projectionData.clipAntimeridian);
     buffer.upload();
 }
 

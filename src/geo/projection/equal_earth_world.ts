@@ -33,6 +33,9 @@ export class EqualEarthWorldCoordinateHelper implements WorldCoordinateHelper {
     readonly sourceTileGrid: TileGrid = 'mercator';
     readonly tileMatrixSet: TileMatrixSet = equalEarthTileMatrixSet;
     readonly mercatorTileWarp: TileWarp = equalEarthTileWarp;
+    readonly bendsMercatorLines = true;
+    /** The projection places every latitude, so GeoJSON is tiled up to both poles. */
+    readonly latitudeRange: [number, number] = [-90, 90];
     readonly worldBounds: readonly [number, number, number, number] = [
         0,
         0.5 - EQUAL_EARTH_HALF_HEIGHT / EXTENT,

@@ -11,8 +11,10 @@ import {MessageType} from '../util/actor_messages.ts';
 import {tileIdToLngLatBounds} from '../tile/tile_id_to_lng_lat_bounds.ts';
 import {UpdateQueue} from '../util/update_queue.ts';
 import {getRegisteredProjection} from '../geo/projection/projection_crud.ts';
+import {SubdivisionGranularitySetting} from '../render/subdivision_granularity_settings.ts';
 import {identityCrs} from '../geo/projection/crs.ts';
 
+import type {TileGrid} from '../geo/projection/tile_warp.ts';
 import type {LngLatBounds} from '../geo/lng_lat_bounds.ts';
 import type {Source} from './source.ts';
 import type {Map} from '../ui/map.ts';
@@ -182,6 +184,8 @@ export class GeoJSONSource extends Evented<SourceEventType> implements Source {
     }>;
     _options: GeoJSONSourceInternalOptions;
     workerOptions: GeoJSONWorkerOptions;
+    /** The name of the plane the workers were last told to tile this source's data on; undefined for lng/lat. */
+    private _workerPlane: string | undefined;
     map: Map;
     actorPromise: Promise<Actor>;
     _workerUpdates: UpdateQueue<GeoJSONWorkerUpdate, GeoJSONWorkerSourceLoadDataResult>;
@@ -289,6 +293,20 @@ export class GeoJSONSource extends Evented<SourceEventType> implements Source {
     onAdd(map: Map): void {
         this.map = map;
         this.load();
+    }
+
+    /**
+     * The workers tile this source's data on the plane of the map's projection, see {@link LoadGeoJSONParameters.crs},
+     * so when the map moves onto another plane they get the data again to tile it there. Moving between projections
+     * of one plane, like mercator and globe, changes nothing for them.
+     */
+    onProjectionChange(): void {
+        if (this._getCRSParameters()?.name === this._workerPlane) return;
+        const data = this._data.updateable ?
+            {type: 'FeatureCollection' as const, features: Array.from(this._data.updateable.values())} :
+            this._data.url || this._data.geojson;
+        this._workerUpdates.replace({data});
+        void this._workerUpdates.flush();
     }
 
     /**
@@ -474,6 +492,7 @@ export class GeoJSONSource extends Evented<SourceEventType> implements Source {
         const params: LoadGeoJSONParameters = extend({type: this.type, source: this.id}, this.workerOptions);
         const crs = this._getCRSParameters();
         if (crs) params.crs = crs;
+        this._workerPlane = crs?.name;
 
         if (!('data' in update)) {
             if (update.diff) params.dataDiff = update.diff;
@@ -492,11 +511,24 @@ export class GeoJSONSource extends Evented<SourceEventType> implements Source {
     }
 
     /**
-     * The map's registered projection as the workers take it, see {@link LoadGeoJSONParameters.crs}. The workers can
+     * The grid this source's tiles are cut in when that is not the map's: on a plane that mercator tiles are warped
+     * onto, the workers tile the data on the plane itself, where it reaches both poles and needs no warp.
+     */
+    get tileGrid(): TileGrid | undefined {
+        return this.map?.style?.projection?.worldCoordinateHelper.mercatorTileWarp ? 'plane' : undefined;
+    }
+
+    /**
+     * The plane the workers tile this source's data on, see {@link LoadGeoJSONParameters.crs}: the plane of a
+     * built-in projection that warps mercator tiles, by its name, or the map's registered projection. The workers can
      * build a projection's converter from its `definition`, or the built-in identity one without, so any other
      * projection is left out with a warning.
      */
     private _getCRSParameters(): LoadGeoJSONParameters['crs'] | undefined {
+        if (this.tileGrid === 'plane') {
+            const {name, tileMatrixSet} = this.map.style.projection.worldCoordinateHelper;
+            return {name, definition: undefined, tileMatrixSet};
+        }
         const crs = getRegisteredProjection(this.map?.style?.projection?.name);
         if (!crs) return undefined;
         if (!crs.definition && crs !== identityCrs) {
@@ -542,7 +574,7 @@ export class GeoJSONSource extends Evented<SourceEventType> implements Source {
         const diff = 'data' in update || replaced ? undefined : update.diff;
         const affectedGeometries = this._applyDiffToSource(diff);
         const refreshesClusters = !('data' in update) && update.updateCluster;
-        const reloadsEveryTile = refreshesClusters || this.map?.style?.projection?.worldCoordinateHelper.sourceTileGrid === 'plane';
+        const reloadsEveryTile = refreshesClusters || (this.tileGrid ?? this.map?.style?.projection?.worldCoordinateHelper.sourceTileGrid) === 'plane';
         const shouldReloadTileOptions = reloadsEveryTile ? undefined : this._getShouldReloadTileOptions(affectedGeometries);
 
         const eventData: {resourceTiming?: PerformanceResourceTiming[]} = {};
@@ -669,7 +701,7 @@ export class GeoJSONSource extends Evented<SourceEventType> implements Source {
             pixelRatio: this.map.getPixelRatio(),
             showCollisionBoxes: this.map.showCollisionBoxes,
             promoteId: this.promoteId,
-            subdivisionGranularity: this.map.style.projection.subdivisionGranularity
+            subdivisionGranularity: this.tileGrid === 'plane' ? SubdivisionGranularitySetting.noSubdivision : this.map.style.projection.subdivisionGranularity
         };
 
         tile.abortController = new AbortController();

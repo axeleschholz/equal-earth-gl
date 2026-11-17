@@ -579,6 +579,7 @@ export class TileManager extends Evented<SourceEventType> {
                 terrain,
                 calculateTileZoom: this._source.calculateTileZoom,
                 maxContentElevation: this._updateMaxContentElevation(),
+                tileGrid: this._source.tileGrid,
             });
 
             if (this._source.hasTile) { // tile should be in bounds

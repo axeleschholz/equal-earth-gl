@@ -8,6 +8,7 @@ import {beforeMapTest, createMap, createPolarStereographicCrs, getWrapDispatcher
 import {AbortError} from '../util/abort_error.ts';
 import {type ActorMessage, type ClusterIDAndSource, type GeoJSONWorkerSourceLoadDataResult, MessageType} from '../util/actor_messages.ts';
 import {identityCrs, type CRS} from '../geo/projection/crs.ts';
+import {equalEarthTileMatrixSet} from '../geo/projection/equal_earth_world.ts';
 import {addProjection, removeProjection} from '../geo/projection/projection_crud.ts';
 import {MercatorProjection} from '../geo/projection/mercator_projection.ts';
 
@@ -401,6 +402,53 @@ describe('GeoJSONSource in a registered projection', () => {
         source.load();
         return {source, sent};
     }
+
+    test('sends the built-in equal-earth plane to the worker and takes its tiles to be cut in that plane', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const {source, sent} = await loadSourceInProjection('equal-earth');
+        await waitForMetadataEvent(source);
+
+        expect(sent[0].crs).toEqual({name: 'equal-earth', definition: undefined, tileMatrixSet: equalEarthTileMatrixSet});
+        expect(source.tileGrid).toBe('plane');
+        expect(warn).not.toHaveBeenCalled();
+    });
+
+    test('sends no projection on mercator and leaves the grid of its tiles to the map', async () => {
+        const {source, sent} = await loadSourceInProjection('mercator');
+        await waitForMetadataEvent(source);
+
+        expect(sent[0].crs).toBeUndefined();
+        expect(source.tileGrid).toBeUndefined();
+    });
+
+    test('sends its data again when the map moves onto another plane, and not when the plane stays', async () => {
+        const {source, sent} = await loadSourceInProjection('mercator');
+        await waitForMetadataEvent(source);
+        expect(sent).toHaveLength(1);
+
+        source.map.setProjection({type: 'globe'});
+        source.onProjectionChange();
+        await sleep(0);
+        expect(sent).toHaveLength(1);
+
+        source.map.setProjection({type: 'equal-earth'});
+        source.onProjectionChange();
+        await sleep(0);
+        expect(sent).toHaveLength(2);
+        expect(sent[1].crs.name).toBe('equal-earth');
+        expect(sent[1].data).toEqual({type: 'FeatureCollection', features: []});
+
+        source.onProjectionChange();
+        await sleep(0);
+        expect(sent).toHaveLength(2);
+
+        source.map.setProjection({type: 'mercator'});
+        source.onProjectionChange();
+        await sleep(0);
+        expect(sent).toHaveLength(3);
+        expect(sent[2].crs).toBeUndefined();
+        expect(sent[2].data).toEqual({type: 'FeatureCollection', features: []});
+    });
 
     test('sends the built-in identity projection to the worker without a definition', async () => {
         const {source, sent} = await loadSourceInProjection('identity');

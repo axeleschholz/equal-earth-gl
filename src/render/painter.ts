@@ -307,8 +307,10 @@ export class Painter {
             const coords = coordsDescending[layer.source];
             if (layer.type !== 'custom' && !coords.length) continue;
 
+            frameRenderContext.currentTileGrid = tileManagers[layer.source]?.getSource().tileGrid;
             this.renderLayer(this, tileManagers[layer.source], layer, coords, frameRenderContext);
         }
+        frameRenderContext.currentTileGrid = undefined;
 
         // Rebind the main framebuffer now that all offscreen layers have been rendered:
         this.context.viewport.set([0, 0, this.width, this.height]);
@@ -334,9 +336,11 @@ export class Painter {
                 const tileManager = tileManagers[layer.source];
                 const coords = coordsAscending[layer.source];
 
+                frameRenderContext.currentTileGrid = tileManager?.getSource().tileGrid;
                 frameRenderContext.renderTileClippingMasks(layer, coords);
                 this.renderLayer(this, tileManager, layer, coords, frameRenderContext);
             }
+            frameRenderContext.currentTileGrid = undefined;
         }
 
         // Translucent pass ===============================================
@@ -366,9 +370,11 @@ export class Painter {
             // separate clipping masks
             const coords = (layer.type === 'symbol' ? coordsDescendingSymbol : coordsDescending)[layer.source];
 
+            frameRenderContext.currentTileGrid = tileManager?.getSource().tileGrid;
             frameRenderContext.renderTileClippingMasks(layer, coordsAscending[layer.source]);
             this.renderLayer(this, tileManager, layer, coords, frameRenderContext);
         }
+        frameRenderContext.currentTileGrid = undefined;
 
         // Render atmosphere, only for Globe projection
         if (data.isRenderingGlobe) {

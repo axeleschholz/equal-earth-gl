@@ -1,0 +1,153 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "GeoJSON that crosses the antimeridian is cut there and continues from the other edge of the world.",
+      "width": 512,
+      "height": 256
+    }
+  },
+  "center": [
+    0,
+    0
+  ],
+  "zoom": 0,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "sources": {
+    "water": {
+      "type": "vector",
+      "maxzoom": 0,
+      "tiles": [
+        "local://tiles/{z}-{x}-{y}.mvt"
+      ]
+    },
+    "geojson": {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    160,
+                    -30
+                  ],
+                  [
+                    200,
+                    -30
+                  ],
+                  [
+                    200,
+                    -5
+                  ],
+                  [
+                    160,
+                    -5
+                  ],
+                  [
+                    160,
+                    -30
+                  ]
+                ]
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+              "type": "LineString",
+              "coordinates": [
+                [
+                  139.7,
+                  35.7
+                ],
+                [
+                  241.8,
+                  34.1
+                ]
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                190,
+                60
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "white"
+      }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "water",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "#9ecae1"
+      }
+    },
+    {
+      "id": "box",
+      "type": "fill",
+      "source": "geojson",
+      "filter": [
+        "==",
+        "$type",
+        "Polygon"
+      ],
+      "paint": {
+        "fill-color": "rgba(255,0,0,0.5)"
+      }
+    },
+    {
+      "id": "line",
+      "type": "line",
+      "source": "geojson",
+      "filter": [
+        "==",
+        "$type",
+        "LineString"
+      ],
+      "paint": {
+        "line-color": "#000",
+        "line-width": 3
+      }
+    },
+    {
+      "id": "point",
+      "type": "circle",
+      "source": "geojson",
+      "filter": [
+        "==",
+        "$type",
+        "Point"
+      ],
+      "paint": {
+        "circle-radius": 6,
+        "circle-color": "#006400"
+      }
+    }
+  ]
+}

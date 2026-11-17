@@ -64,6 +64,12 @@ export interface WorldCoordinateHelper {
      */
     mercatorTileWarp: TileWarp | null;
     /**
+     * True for a plane on which the straight lines of a mercator map are curves and the world ends at the
+     * antimeridian. GeoJSON that is tiled on such a plane is first cut at the antimeridian and given positions
+     * along its lines, so that it is drawn where a mercator map draws it, see `projectGeoJSONAlongPaths`.
+     */
+    bendsMercatorLines?: boolean;
+    /**
      * The quad tile matrix set whose tile 0/0/0 is the world square, in CRS units: EPSG:3857 meters for mercator, the
      * registered definition's `tileMatrixSet` for a planar CRS. The `{bbox}` tile URL token is expressed in it.
      */

@@ -9,8 +9,9 @@ uniform highp float u_projection_transition;
 uniform mat4 u_projection_fallback_matrix;
 #endif
 
-// The in-tile X coordinate of the projected vertex, used by clipAntimeridian() in the fragment shader.
+// The in-tile coordinates of the projected vertex, used by clipAntimeridian() in the fragment shader.
 out highp float v_projection_tile_x;
+out highp float v_projection_tile_y;
 
 // The polynomial coefficients of the Equal Earth projection.
 const highp float EE_A1 = 1.340264;
@@ -125,6 +126,7 @@ vec2 equalEarthWarp(vec2 posInTile, float pole, out float xScale) {
 
 vec4 equalEarthProject(vec2 posInTile, float pole, float elevation) {
     v_projection_tile_x = posInTile.x;
+    v_projection_tile_y = posInTile.y;
     float xScale;
     return u_projection_matrix * vec4(equalEarthWarp(posInTile, pole, xScale), elevation, 1.0);
 }
@@ -147,25 +149,27 @@ vec4 projectTileFor3D(vec2 posInTile, float elevation) {
     return equalEarthProject(posInTile, equalEarthPole(posInTile), elevation);
 }
 
-// The offset in the tile that lands where a flat tile would put `offset`, measured across the line it belongs to.
-// The warp stretches a tile differently along x and y and shears it, so an offset perpendicular to a line in the
-// tile is not perpendicular to it on screen, nor as long as on a flat tile. This takes the line's direction through
-// the warp, and returns the offset in the tile whose warp is perpendicular to that, with the length a flat tile gives.
-vec2 projectTileOffset(vec2 posInTile, vec2 offset) {
-    float offsetLength = length(offset);
-    if (offsetLength == 0.0) {
-        return offset;
-    }
+// Projects a point in the tile moved by `extrusion`, the offset in tile units of a flat tile that takes a vertex of
+// a line across the line to its edge. The warp stretches a tile differently along x and y and shears it, so an offset
+// perpendicular to a line in the tile is not perpendicular to it on screen, nor as long as on a flat tile. This takes
+// the line's direction through the warp, and moves the warped point perpendicular to that on the plane, by the length
+// a flat tile gives the extrusion.
+vec4 projectTileExtruded(vec2 posInTile, vec2 extrusion) {
+    v_projection_tile_x = posInTile.x;
+    v_projection_tile_y = posInTile.y;
     float a;
     float unused;
     vec2 here = equalEarthWarp(posInTile, 0.0, a);
+    float extrusionLength = length(extrusion);
+    if (extrusionLength == 0.0) {
+        return u_projection_matrix * vec4(here, 0.0, 1.0);
+    }
     vec2 below = equalEarthWarp(posInTile + vec2(0.0, EE_SLOPE_STEP), 0.0, unused);
     float b = (below.x - here.x) / EE_SLOPE_STEP;
     float c = (below.y - here.y) / EE_SLOPE_STEP;
-    vec2 along = vec2(-offset.y, offset.x);
+    vec2 along = vec2(-extrusion.y, extrusion.x);
     vec2 alongOnPlane = vec2(a * along.x + b * along.y, c * along.y);
     float flatScale = u_projection_tile_mercator_coords.z;
-    vec2 onPlane = flatScale * offsetLength * vec2(alongOnPlane.y, -alongOnPlane.x) / length(alongOnPlane);
-    float y = onPlane.y / c;
-    return vec2((onPlane.x - b * y) / a, y);
+    vec2 onPlane = flatScale * extrusionLength * vec2(alongOnPlane.y, -alongOnPlane.x) / length(alongOnPlane);
+    return u_projection_matrix * vec4(here + onPlane, 0.0, 1.0);
 }
