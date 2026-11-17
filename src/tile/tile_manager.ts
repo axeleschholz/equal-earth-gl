@@ -21,8 +21,8 @@ import {MapSourceDataEvent, type SourceEventType} from '../ui/events.ts';
 import {getCameraMath} from '../camera/camera_math_factory.ts';
 import {mercatorWorldCoordinateHelper} from '../geo/mercator_coordinate.ts';
 import {resolveTileGrid} from '../geo/projection/tile_warp.ts';
-
 import Point from '@mapbox/point-geometry';
+
 import type {Context} from '../webgl/context.ts';
 import type {Source} from '../source/source.ts';
 import type {Map} from '../ui/map.ts';

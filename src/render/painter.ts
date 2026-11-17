@@ -652,7 +652,7 @@ export class Painter {
  * The layer types that are not drawn on tiles of the mercator grid where a projection warps those onto its plane:
  * placing and drawing them takes the warp on the CPU as well, which they do not use yet.
  */
-const LAYER_TYPES_NOT_WARPED = new Set(['hillshade', 'color-relief', 'fill-extrusion']);
+const LAYER_TYPES_NOT_WARPED = new Set(['fill-extrusion']);
 
 /**
  * Whether a layer is drawn: always, except for a layer of one of {@link LAYER_TYPES_NOT_WARPED} on a source of
