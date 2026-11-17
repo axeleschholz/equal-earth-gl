@@ -39,26 +39,26 @@ describe('layers a projection does not draw on warped tiles yet', () => {
     }
 
     test('are skipped on the equal-earth plane with one warning per type', () => {
-        const skipped: LayerType[] = ['symbol', 'circle', 'heatmap', 'hillshade', 'color-relief', 'fill-extrusion'];
+        const skipped: LayerType[] = ['symbol', 'hillshade', 'color-relief', 'fill-extrusion'];
         for (const type of skipped) {
             render(type, equalEarthWorldCoordinateHelper);
             render(type, equalEarthWorldCoordinateHelper, undefined, `${type}-second-layer`);
         }
         expect(drawn).toEqual([]);
-        expect(warn).toHaveBeenCalledTimes(6);
+        expect(warn).toHaveBeenCalledTimes(4);
         expect(warn.mock.calls[0][0]).toContain('symbol layers on tile sources are not yet drawn in the equal-earth projection');
     });
 
-    test('leave fill, line, raster and background layers drawn on the equal-earth plane', () => {
-        for (const type of ['fill', 'line', 'raster', 'background'] as LayerType[]) render(type, equalEarthWorldCoordinateHelper);
-        expect(drawn).toEqual(['fill', 'line', 'raster', 'background']);
+    test('leave fill, line, raster, background, circle and heatmap layers drawn on the equal-earth plane', () => {
+        for (const type of ['fill', 'line', 'raster', 'background', 'circle', 'heatmap'] as LayerType[]) render(type, equalEarthWorldCoordinateHelper);
+        expect(drawn).toEqual(['fill', 'line', 'raster', 'background', 'circle', 'heatmap']);
         expect(warn).not.toHaveBeenCalled();
     });
 
     test('are drawn for a source whose tiles are cut in the plane\'s own grid', () => {
         render('symbol', equalEarthWorldCoordinateHelper, 'plane');
-        render('circle', equalEarthWorldCoordinateHelper, 'plane');
-        expect(drawn).toEqual(['symbol', 'circle']);
+        render('hillshade', equalEarthWorldCoordinateHelper, 'plane');
+        expect(drawn).toEqual(['symbol', 'hillshade']);
         expect(warn).not.toHaveBeenCalled();
     });
 

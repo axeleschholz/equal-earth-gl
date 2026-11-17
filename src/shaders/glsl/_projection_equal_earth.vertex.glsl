@@ -173,3 +173,14 @@ vec4 projectTileExtruded(vec2 posInTile, vec2 extrusion) {
     vec2 onPlane = flatScale * extrusionLength * vec2(alongOnPlane.y, -alongOnPlane.x) / length(alongOnPlane);
     return u_projection_matrix * vec4(here + onPlane, 0.0, 1.0);
 }
+
+// Projects a point in the tile moved by `offset`, in tile units of a flat tile, as the corner of a shape that
+// lies on the map around the point is. The point is warped and the offset added on the plane, so that the shape keeps
+// its form and the size a flat tile gives it, instead of taking on the stretch and shear of the warp.
+vec4 projectTileWithFlatOffset(vec2 posInTile, vec2 offset, float elevation) {
+    v_projection_tile_x = posInTile.x;
+    v_projection_tile_y = posInTile.y;
+    float xScale;
+    vec2 onPlane = equalEarthWarp(posInTile, 0.0, xScale) + u_projection_tile_mercator_coords.z * offset;
+    return u_projection_matrix * vec4(onPlane, elevation, 1.0);
+}

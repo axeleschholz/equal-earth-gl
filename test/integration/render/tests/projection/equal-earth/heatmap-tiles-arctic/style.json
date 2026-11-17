@@ -1,0 +1,56 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "Heatmap kernels from mercator vector tiles are round at high latitude.",
+      "width": 512,
+      "height": 512
+    }
+  },
+  "center": [
+    20,
+    78
+  ],
+  "zoom": 3,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "sources": {
+    "tiles": {
+      "type": "vector",
+      "maxzoom": 14,
+      "tiles": [
+        "local://tiles/14-8802-5374.mvt"
+      ]
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "#f2f2f2"
+      }
+    },
+    {
+      "id": "road",
+      "type": "line",
+      "source": "tiles",
+      "source-layer": "road",
+      "paint": {
+        "line-color": "#999",
+        "line-width": 1
+      }
+    },
+    {
+      "id": "heat",
+      "type": "heatmap",
+      "source": "tiles",
+      "source-layer": "poi_label",
+      "paint": {
+        "heatmap-radius": 12,
+        "heatmap-intensity": 0.3
+      }
+    }
+  ]
+}

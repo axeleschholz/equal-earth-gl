@@ -67,7 +67,7 @@ void main(void) {
         vec3 corner_vector = globeRotateVector(center_vector, angles);
         gl_Position = interpolateProjection(corner_position, corner_vector, ele);
 #else
-        gl_Position = projectTileWithElevation(corner_position, ele);
+        gl_Position = projectTileWithFlatOffset(circle_center, corner_position - circle_center, ele);
 #endif
     } else {
         gl_Position = projectTileWithElevation(circle_center, ele);

@@ -41,3 +41,9 @@ vec4 projectTileFor3D(vec2 posInTile, float elevation) {
 vec4 projectTileExtruded(vec2 posInTile, vec2 extrusion) {
     return projectTile(posInTile + extrusion);
 }
+
+// Projects a point in the tile moved by `offset`, in tile units of a flat tile, as the corner of a shape that
+// lies on the map around the point is. Tiles are flat or evenly scaled here, so that is the projection of their sum.
+vec4 projectTileWithFlatOffset(vec2 posInTile, vec2 offset, float elevation) {
+    return projectTileFor3D(posInTile + offset, elevation);
+}

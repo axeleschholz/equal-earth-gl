@@ -1,0 +1,59 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "Circles from mercator vector tiles are round at high latitude, where the warp stretches tiles most.",
+      "width": 512,
+      "height": 512
+    }
+  },
+  "center": [
+    20,
+    78
+  ],
+  "zoom": 3,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "sources": {
+    "tiles": {
+      "type": "vector",
+      "maxzoom": 14,
+      "tiles": [
+        "local://tiles/14-8802-5374.mvt"
+      ]
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "#f2f2f2"
+      }
+    },
+    {
+      "id": "road",
+      "type": "line",
+      "source": "tiles",
+      "source-layer": "road",
+      "paint": {
+        "line-color": "#999",
+        "line-width": 1
+      }
+    },
+    {
+      "id": "poi",
+      "type": "circle",
+      "source": "tiles",
+      "source-layer": "poi_label",
+      "paint": {
+        "circle-radius": 6,
+        "circle-color": "#d7301f",
+        "circle-opacity": 0.7,
+        "circle-stroke-width": 1,
+        "circle-stroke-color": "#000"
+      }
+    }
+  ]
+}
