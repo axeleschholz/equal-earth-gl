@@ -1,4 +1,5 @@
-import {describe, expect, test} from 'vitest';
+import {describe, expect, test, vi} from 'vitest';
+import {CRSWorldCoordinateHelper, identityCrs} from '../geo/projection/crs.ts';
 import Point from '@mapbox/point-geometry';
 import {defaultConstrain} from './camera_constrain.ts';
 import {getCameraSolver} from './camera_solver_factory.ts';
@@ -21,11 +22,23 @@ describe('the camera constrain on the equal-earth plane', () => {
         expect(result.zoom).toBe(3);
     });
 
-    test('moves a center past the antimeridian onto the outline at its latitude', () => {
+    test('takes a center past the antimeridian to be the same place inside the world', () => {
         const {state, context} = equalEarthCamera({width: 1024, height: 512});
         const result = defaultConstrain(state, context, new LngLat(230, 60), 3);
-        expect(result.center.lng).toBeCloseTo(180, 6);
-        expect(result.center.lat).toBeCloseTo(60, 6);
+        const helper = context.worldCoordinateHelper;
+        const world = helper.worldFromLngLat(result.center.lng, result.center.lat);
+        const expected = helper.worldFromLngLat(-130, 60);
+        expect(world.x).toBeCloseTo(expected.x, 12);
+        expect(world.y).toBeCloseTo(expected.y, 12);
+        expect(helper.hasLngLat(world.x, world.y)).toBe(true);
+    });
+
+    test('does not ask a registered CRS whether the center has a lng/lat', () => {
+        const crsHelper = new CRSWorldCoordinateHelper(identityCrs);
+        const hasLngLat = vi.spyOn(crsHelper, 'hasLngLat');
+        const {state, context} = createTestCamera({width: 512, height: 512}, {projection: 'mercator', worldCoordinateHelper: crsHelper});
+        defaultConstrain(state, context, new LngLat(10, 10), 3);
+        expect(hasLngLat).not.toHaveBeenCalled();
     });
 
     test('leaves the zoom alone when the world is smaller than the viewport', () => {

@@ -144,9 +144,8 @@ function mercatorConstrain(view: CameraViewState, worldCoordinateHelper: WorldCo
 
 /**
  * The constrain for a projection whose world does not wrap. Without max bounds only the center stays inside the
- * world, the part of the 0..1 world square that has a lng/lat, and the zoom is left to `minZoom`: the square is the
- * grid the tile matrix set picked, which can be much larger than the area of interest or narrower than the window.
- * A center outside the world moves to the position the world mapping answers for it. With max bounds, projected as a box
+ * bounds of the world in the 0..1 world square, and the zoom is left to `minZoom`: the square is the grid the tile
+ * matrix set picked, which can be much larger than the area of interest or narrower than the window. With max bounds, projected as a box
  * since both world axes may depend on lng and lat, the view may not leave them and the map zooms in until they
  * fill the screen.
  */
@@ -158,7 +157,7 @@ function constrainToWorldSquare(view: CameraViewState, worldCoordinateHelper: Wo
         const [minWorldX, minWorldY, maxWorldX, maxWorldY] = worldCoordinateHelper.worldBounds;
         const clampedX = clamp(x, minWorldX * worldSize, maxWorldX * worldSize);
         const clampedY = clamp(y, minWorldY * worldSize, maxWorldY * worldSize);
-        if (clampedX !== x || clampedY !== y || !worldCoordinateHelper.hasLngLat(x / worldSize, y / worldSize)) {
+        if (clampedX !== x || clampedY !== y) {
             return {center: unprojectFromWorldCoordinates(worldSize, new Point(clampedX, clampedY), worldCoordinateHelper), zoom};
         }
         return {center: new LngLat(lngLat.lng, lngLat.lat), zoom};

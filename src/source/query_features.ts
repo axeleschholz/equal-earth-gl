@@ -1,4 +1,7 @@
 import {getCameraMath} from '../camera/camera_math_factory.ts';
+import {mercatorWorldCoordinateHelper} from '../geo/mercator_coordinate.ts';
+import {resolveTileGrid, type TileGrid} from '../geo/projection/tile_warp.ts';
+import {warnOnce} from '../util/util.ts';
 
 import type Point from '@mapbox/point-geometry';
 import type {TileManager} from '../tile/tile_manager.ts';
@@ -106,6 +109,20 @@ function queryIncludes3DLayer(layers: Set<string> | undefined, styleLayers: {[_:
     return false;
 }
 
+/**
+ * @internal
+ * The world mapping that turns the tile coordinates of a source's features back into lng/lat: the plane's, except
+ * for a source of mercator tiles on a plane those are warped onto, whose tile coordinates are mercator's.
+ */
+export function featureGeometryHelper(sourceTileGrid: TileGrid | undefined, worldCoordinateHelper: WorldCoordinateHelper): WorldCoordinateHelper {
+    const warped = worldCoordinateHelper.mercatorTileWarp && resolveTileGrid(sourceTileGrid, worldCoordinateHelper) === 'mercator';
+    return warped ? mercatorWorldCoordinateHelper : worldCoordinateHelper;
+}
+
+/**
+ * The features of a source that are drawn at a place on screen. A source of mercator tiles on a plane those are
+ * warped onto has none yet, with one warning: finding them takes the warp, which the tile query does not apply.
+ */
 export function queryRenderedFeatures(
     tileManager: TileManager,
     styleLayers: {[_: string]: StyleLayer},
@@ -116,6 +133,10 @@ export function queryRenderedFeatures(
     worldCoordinateHelper: WorldCoordinateHelper,
     getElevation: undefined | ((id: OverscaledTileID, x: number, y: number) => number)
 ): QueryRenderedFeaturesResults {
+    if (worldCoordinateHelper.mercatorTileWarp && featureGeometryHelper(tileManager.getSource().tileGrid, worldCoordinateHelper) !== worldCoordinateHelper) {
+        warnOnce(`queryRenderedFeatures does not yet find the features of tile sources in the ${worldCoordinateHelper.name} projection.`);
+        return {};
+    }
 
     const has3DLayer = queryIncludes3DLayer(params?.layers ?? null, styleLayers, tileManager.id);
     const maxPitchScaleFactor = getCameraMath(projectedCamera).maxPitchScaleFactor(projectedCamera);
@@ -217,12 +238,15 @@ export function querySourceFeatures(tileManager: TileManager, params: QuerySourc
 
     const result: GeoJSONFeature[] = [];
 
+    const tileParams = params?.worldCoordinateHelper?.mercatorTileWarp ?
+        {...params, worldCoordinateHelper: featureGeometryHelper(tileManager.getSource().tileGrid, params.worldCoordinateHelper)} :
+        params;
     const dataTiles = {};
     for (const tile of tiles) {
         const dataID = tile.tileID.canonical.key;
         if (!dataTiles[dataID]) {
             dataTiles[dataID] = true;
-            tile.querySourceFeatures(result, params);
+            tile.querySourceFeatures(result, tileParams);
         }
     }
 

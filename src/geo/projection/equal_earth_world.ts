@@ -44,7 +44,12 @@ export class EqualEarthWorldCoordinateHelper implements WorldCoordinateHelper {
     ];
     private readonly _scratch: [number, number] = [0, 0];
 
+    /**
+     * lng/lat to the world square. The world has one copy, so a longitude past the antimeridian is the same place
+     * inside it: 200 is -160. The antimeridian itself stays on the edge it names, 180 east and -180 west.
+     */
     worldFromLngLat(lng: number, lat: number, altitude?: number): MercatorCoordinate {
+        if (lng > 180 || lng < -180) lng = ((lng + 180) % 360 + 360) % 360 - 180;
         const [x, y] = equalEarthForward(lng, lat, this._scratch);
         return new MercatorCoordinate((x + EQUAL_EARTH_HALF_WIDTH) / EXTENT, (EQUAL_EARTH_HALF_WIDTH - y) / EXTENT, altitude === undefined ? 0 : altitude / EXTENT);
     }

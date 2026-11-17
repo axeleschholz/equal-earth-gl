@@ -163,4 +163,22 @@ describe('projectGeoJSONAlongPaths', () => {
         const polygons = project({type: 'MultiPolygon', coordinates: [[[[177, -16], [183, -16], [183, -19], [177, -16]]], [[[0, 0], [1, 0], [1, 1], [0, 0]]]]});
         expect(polygons.coordinates).toHaveLength(3);
     });
+
+    test('leaves out positions that are not finite or lie absurdly far around the world, without hanging', () => {
+        const nan = project({type: 'LineString', coordinates: [[NaN, 0], [10, 0], [20, 0]]});
+        expect(nan.coordinates).toHaveLength(2);
+        const missing = project({type: 'LineString', coordinates: [[10, 0], [undefined, undefined], [20, 0]]} as any);
+        expect(missing.type).toBe('LineString');
+        expect(missing.coordinates).toHaveLength(2);
+        const infinite = project({type: 'Polygon', coordinates: [[[0, 0], [Infinity, 0], [10, 10], [0, 10], [0, 0]]]});
+        expect(infinite.type).toBe('Polygon');
+        expect(infinite.coordinates[0].length).toBeGreaterThanOrEqual(4);
+        const far = project({type: 'LineString', coordinates: [[0, 0], [1e12, 0], [5, 5]]});
+        expect(far.type).toBe('LineString');
+        expect(far.coordinates.length).toBeLessThan(1000);
+        const allBad = project({type: 'LineString', coordinates: [[NaN, NaN], [Infinity, 2]]});
+        expect(allBad.coordinates).toEqual([]);
+        const point = project({type: 'Point', coordinates: [NaN, 0]});
+        expect(point.type).toBe('Point');
+    });
 });

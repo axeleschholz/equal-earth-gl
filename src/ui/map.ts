@@ -42,7 +42,8 @@ import {applyConstrain} from '../camera/camera_constrain.ts';
 import {getMaxBounds} from '../camera/camera_view_state.ts';
 import {CanonicalTileID, type OverscaledTileID} from '../tile/tile_id.ts';
 import {isStyleImageWebGLData} from '../style/style_image.ts';
-import {getRegisteredProjection} from '../geo/projection/projection_crud.ts';
+import {hasOwnPlane} from '../geo/projection/projection_factory.ts';
+import {getDefaultProjection} from '../geo/projection/default_projection.ts';
 
 import type {PaddingOptions} from '../geo/edge_insets.ts';
 import type {Source} from '../source/source.ts';
@@ -919,11 +920,12 @@ export class Map extends Evented<MapEventType> {
             }
         }
 
-        // When no style is set or it's using something other than the globe projection or a registered planar CRS, we can constrain the camera.
-        // When a style is set with those projections though, we can't constrain the camera until the style is loaded
-        // and the correct camera is used. Otherwise, valid points in the desired projection could be rejected
-        const styleProjectionType = typeof resolvedOptions.style === 'string' ? undefined : resolvedOptions.style?.projection?.type;
-        const shouldConstrainUsingMercatorView = styleProjectionType !== 'globe' && !getRegisteredProjection(styleProjectionType);
+        // When the map is going to be drawn in something other than the globe projection or a flat map on a plane of its own, we can constrain the camera.
+        // With those projections though, we can't constrain the camera until the style is loaded
+        // and the correct camera is used. Otherwise, valid points in the desired projection could be rejected.
+        // A style that names no projection, or that is yet to be fetched, is taken to be drawn in the default one.
+        const styleProjectionType = (typeof resolvedOptions.style === 'string' ? undefined : resolvedOptions.style?.projection?.type) ?? getDefaultProjection();
+        const shouldConstrainUsingMercatorView = styleProjectionType !== 'globe' && !hasOwnPlane(styleProjectionType);
         this.resize(null, shouldConstrainUsingMercatorView);
 
         this._localIdeographFontFamily = resolvedOptions.localIdeographFontFamily;

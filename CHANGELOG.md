@@ -16,7 +16,8 @@ The first release of the Equal Earth fork, on MapLibre GL JS 6.18.0. See the [Eq
 ### Known limits
 
 - `symbol`, `circle`, `heatmap`, `hillshade`, `color-relief` and `fill-extrusion` layers on tile sources are left out in `equal-earth`, with one console warning per type
-- Terrain, the sky, custom layers, `queryRenderedFeatures` on tile sources, and image, video and canvas sources are not covered in `equal-earth` yet
+- `queryRenderedFeatures` returns nothing for tile sources in `equal-earth`, with a console warning; it works for GeoJSON sources
+- Terrain, the sky, custom layers, and image, video and canvas sources are not covered in `equal-earth` yet
 
 ### 🐞 Bug fixes
 - _...Add new stuff here..._

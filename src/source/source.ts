@@ -36,10 +36,11 @@ export interface Source {
      */
     tileGrid?: TileGrid;
     /**
-     * Called when the map's projection changed, before the source's tiles are reloaded, for a source whose tiles
-     * depend on the projection beyond how they are drawn.
+     * Called when the map's projection changed, for a source whose tiles depend on the projection beyond how they
+     * are drawn. A source that returns true makes its tiles anew for the projection, so the ones it has are dropped;
+     * otherwise they are reloaded.
      */
-    onProjectionChange?(): void;
+    onProjectionChange?(): boolean;
     readonly type: string;
     /**
      * The id for the source. Must not be used by any existing source.

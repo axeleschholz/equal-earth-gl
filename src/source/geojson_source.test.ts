@@ -427,27 +427,42 @@ describe('GeoJSONSource in a registered projection', () => {
         expect(sent).toHaveLength(1);
 
         source.map.setProjection({type: 'globe'});
-        source.onProjectionChange();
-        await sleep(0);
+        expect(source.onProjectionChange()).toBe(false);
+        await sleep(10);
         expect(sent).toHaveLength(1);
 
         source.map.setProjection({type: 'equal-earth'});
-        source.onProjectionChange();
-        await sleep(0);
+        expect(source.onProjectionChange()).toBe(true);
+        await sleep(10);
         expect(sent).toHaveLength(2);
         expect(sent[1].crs.name).toBe('equal-earth');
         expect(sent[1].data).toEqual({type: 'FeatureCollection', features: []});
 
-        source.onProjectionChange();
-        await sleep(0);
+        expect(source.onProjectionChange()).toBe(false);
+        await sleep(10);
         expect(sent).toHaveLength(2);
 
         source.map.setProjection({type: 'mercator'});
-        source.onProjectionChange();
-        await sleep(0);
+        expect(source.onProjectionChange()).toBe(true);
+        await sleep(10);
         expect(sent).toHaveLength(3);
         expect(sent[2].crs).toBeUndefined();
         expect(sent[2].data).toEqual({type: 'FeatureCollection', features: []});
+    });
+
+    test('keeps an update that is still waiting when the map moves onto another plane', async () => {
+        const {source, sent} = await loadSourceInProjection('mercator');
+        await waitForMetadataEvent(source);
+        const added: GeoJSON.Feature = {type: 'Feature', id: 1, properties: {}, geometry: {type: 'Point', coordinates: [1, 2]}};
+
+        void source.updateData({add: [added]});
+        source.map.setProjection({type: 'equal-earth'});
+        source.onProjectionChange();
+        await sleep(20);
+
+        const last = sent[sent.length - 1];
+        expect(last.crs.name).toBe('equal-earth');
+        expect(last.data).toEqual({type: 'FeatureCollection', features: [added]});
     });
 
     test('sends the built-in identity projection to the worker without a definition', async () => {

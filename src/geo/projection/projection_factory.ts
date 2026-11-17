@@ -5,6 +5,7 @@ import {VerticalPerspectiveProjection} from './vertical_perspective_projection.t
 import {CRSWorldCoordinateHelper} from './crs.ts';
 import {getRegisteredProjection} from './projection_crud.ts';
 import {EqualEarthProjection} from './equal_earth_projection.ts';
+import {equalEarthWorldCoordinateHelper} from './equal_earth_world.ts';
 
 import type {ProjectionSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {Projection} from './projection.ts';
@@ -85,6 +86,18 @@ export function createProjectionFromName(name: ProjectionSpecification['type'], 
             };
         }
     }
+}
+
+/** The built-in projections that are flat maps on a plane of their own, by name. */
+const builtInPlanes = new Set<unknown>([equalEarthWorldCoordinateHelper.name]);
+
+/**
+ * @internal
+ * Whether a projection name is that of a flat map on a plane that is not mercator's: a built-in one, or one
+ * registered with `addProjection`. A camera for such a map cannot be constrained the way a mercator camera is.
+ */
+export function hasOwnPlane(name: ProjectionSpecification['type'] | undefined): boolean {
+    return builtInPlanes.has(name) || (typeof name === 'string' && getRegisteredProjection(name) !== undefined);
 }
 
 /**

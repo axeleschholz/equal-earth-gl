@@ -67,6 +67,16 @@ describe('EqualEarthWorldCoordinateHelper', () => {
         expect(corner.lat).toBeCloseTo(-90, 6);
     });
 
+    test('brings a longitude past the antimeridian back into the world, and keeps the antimeridian on its own edge', () => {
+        const wrapped = helper.worldFromLngLat(200, 20);
+        const direct = helper.worldFromLngLat(-160, 20);
+        expect(wrapped.x).toBeCloseTo(direct.x, 12);
+        expect(wrapped.y).toBeCloseTo(direct.y, 12);
+        expect(helper.worldFromLngLat(-190, -5).x).toBeCloseTo(helper.worldFromLngLat(170, -5).x, 12);
+        expect(helper.worldFromLngLat(180, 0).x).toBeCloseTo(1, 12);
+        expect(helper.worldFromLngLat(-180, 0).x).toBeCloseTo(0, 12);
+        expect(helper.hasLngLat(wrapped.x, wrapped.y)).toBe(true);
+    });
     test('bounds the world to the band between the poles', () => {
         expect(helper.worldBounds[0]).toBe(0);
         expect(helper.worldBounds[1]).toBeCloseTo(NORTH_POLE_Y, 9);

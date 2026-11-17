@@ -297,16 +297,30 @@ export class GeoJSONSource extends Evented<SourceEventType> implements Source {
 
     /**
      * The workers tile this source's data on the plane of the map's projection, see {@link LoadGeoJSONParameters.crs},
-     * so when the map moves onto another plane they get the data again to tile it there. Moving between projections
-     * of one plane, like mercator and globe, changes nothing for them.
+     * so when the map moves onto another plane they get the data again to tile it there. The tiles they made for the
+     * old plane are of no use on the new one, so the caller drops them instead of reloading them. Moving between
+     * projections of one plane, like mercator and globe, changes nothing for the workers.
+     *
+     * @returns whether the data is being tiled again, and the source's tiles are to be dropped
      */
-    onProjectionChange(): void {
-        if (this._getCRSParameters()?.name === this._workerPlane) return;
+    onProjectionChange(): boolean {
+        if (this._getCRSParameters()?.name === this._workerPlane) return false;
+        void this._sendDataForNewPlane();
+        return true;
+    }
+
+    /**
+     * Sends the workers all of this source's data, once the updates that are waiting or being sent have reached
+     * them and this source's copy of the data, so that none of them is lost.
+     */
+    private async _sendDataForNewPlane(): Promise<void> {
+        await this._workerUpdates.flush();
+        if (this._removed) return;
         const data = this._data.updateable ?
             {type: 'FeatureCollection' as const, features: Array.from(this._data.updateable.values())} :
             this._data.url || this._data.geojson;
         this._workerUpdates.replace({data});
-        void this._workerUpdates.flush();
+        await this._workerUpdates.flush();
     }
 
     /**

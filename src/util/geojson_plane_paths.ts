@@ -53,6 +53,22 @@ function unshift(position: Position, band: number): Position {
     return moved;
 }
 
+/** How many copies of the world to either side of the first a position can be in and still be drawn. */
+const MAX_BAND = 8;
+
+/**
+ * Whether a position can be put on the plane: its longitude and latitude are numbers, and it is not so many
+ * times around the world that cutting a line to it would produce more pieces than anyone drew on purpose.
+ */
+function isPlaceable(position: Position): boolean {
+    return Number.isFinite(position[0]) && Number.isFinite(position[1]) && Math.abs(position[0]) <= 180 + 360 * MAX_BAND;
+}
+
+/** A line or ring without the positions that cannot be put on the plane; the same array when it has none. */
+function placeable(line: Position[]): Position[] {
+    return line.every(isPlaceable) ? line : line.filter(isPlaceable);
+}
+
 function samePlace(a: Position, b: Position): boolean {
     return a[0] === b[0] && a[1] === b[1];
 }
@@ -177,6 +193,9 @@ function cutPolygon(rings: Position[][]): Position[][][] {
  *   them on the plane are within `tolerance` of it, in world units. A segment that reaches past the latitudes
  *   mercator has runs with latitude changing evenly with longitude instead.
  *
+ * A position whose longitude or latitude is not a finite number, or that is more than eight times around the world,
+ * is left out of its line or ring, and a point at one is left as it is, which no tile holds.
+ *
  * Returns a new object; the input is never mutated, and members that are not coordinates are carried over.
  */
 export function projectGeoJSONAlongPaths<T extends GeoJSON.GeoJSON>(data: T, worldCoordinateHelper: Pick<WorldCoordinateHelper, 'worldFromLngLat'>, tolerance: number): T {
@@ -220,15 +239,16 @@ export function projectGeoJSONAlongPaths<T extends GeoJSON.GeoJSON>(data: T, wor
     };
 
     const projectPoint = (position: Position): Position => {
+        if (!isPlaceable(position)) return position;
         return toWorld(unshift(position, bandOf(position[0])));
     };
 
     const projectLines = (lines: Position[][]): Position[][] => {
-        return lines.flatMap(line => line.length ? cutLine(line) : []).map(projectLine);
+        return lines.map(placeable).flatMap(line => line.length ? cutLine(line) : []).map(projectLine);
     };
 
     const projectPolygons = (polygons: Position[][][]): Position[][][] => {
-        return polygons.flatMap(cutPolygon).map(rings => rings.map(projectLine));
+        return polygons.map(rings => rings.map(placeable)).flatMap(cutPolygon).map(rings => rings.map(projectLine));
     };
 
     const projectGeometry = (geometry: GeoJSON.Geometry): GeoJSON.Geometry => {

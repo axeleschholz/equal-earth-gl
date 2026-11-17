@@ -1852,8 +1852,11 @@ export class Style extends Evented<MapEventType> {
         this.projection = projectionObjects.projection;
         this.map.migrateProjection(projectionObjects.cameraProjection, projectionObjects.projection.worldCoordinateHelper);
         for (const key in this.tileManagers) {
-            this.tileManagers[key].getSource().onProjectionChange?.();
-            this.tileManagers[key].reload();
+            if (this.tileManagers[key].getSource().onProjectionChange?.()) {
+                this.tileManagers[key].clearTiles();
+            } else {
+                this.tileManagers[key].reload();
+            }
         }
     }
 

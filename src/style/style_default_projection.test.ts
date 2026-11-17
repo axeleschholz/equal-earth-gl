@@ -64,12 +64,25 @@ describe('a style drawn in the default projection', () => {
         expect(style.projection.name).toBe('mercator');
     });
 
-    test('tells its sources when the projection changes', async () => {
-        const style = await loadStyle({projection: {type: 'mercator'}, sources: {geojson: {type: 'geojson', data: {type: 'FeatureCollection', features: []}}}});
-        const source = style.tileManagers['geojson'].getSource();
-        const onProjectionChange = vi.spyOn(source as any, 'onProjectionChange').mockImplementation(() => {});
+    test('drops the tiles of a source that tiles its data again for the new projection, and reloads those of the others', async () => {
+        const style = await loadStyle({projection: {type: 'mercator'}, sources: {
+            geojson: {type: 'geojson', data: {type: 'FeatureCollection', features: []}},
+            vector: {type: 'vector', tiles: ['http://example.com/{z}/{x}/{y}.pbf']},
+        }});
+        const geojson = style.tileManagers['geojson'];
+        const vector = style.tileManagers['vector'];
+        const onProjectionChange = vi.spyOn(geojson.getSource() as any, 'onProjectionChange');
+        const spies = {
+            geojsonClear: vi.spyOn(geojson, 'clearTiles'), geojsonReload: vi.spyOn(geojson, 'reload'),
+            vectorClear: vi.spyOn(vector, 'clearTiles'), vectorReload: vi.spyOn(vector, 'reload'),
+        };
         style.setProjection({type: 'equal-earth'});
         expect(onProjectionChange).toHaveBeenCalledTimes(1);
+        expect(spies.geojsonClear).toHaveBeenCalledTimes(1);
+        expect(spies.geojsonReload).not.toHaveBeenCalled();
+        expect(spies.vectorReload).toHaveBeenCalledTimes(1);
+        expect(spies.vectorClear).not.toHaveBeenCalled();
+
         style.setProjection({type: 'equal-earth'});
         expect(onProjectionChange).toHaveBeenCalledTimes(1);
     });
