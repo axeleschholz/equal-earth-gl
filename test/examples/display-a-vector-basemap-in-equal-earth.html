@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Display a vector basemap in Equal Earth</title>
+    <meta property="og:description" content="Draw an ordinary Web Mercator vector basemap, with its labels, in the Equal Earth projection, and read the feature under the pointer." />
+    <meta property="og:category" content="Vector & GeoJSON" />
+    <meta property="og:created" content="2026-11-17" />
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel='stylesheet' href='../../dist/maplibre-gl.css' />
+    <style>
+        body { margin: 0; padding: 0; background: #f4f4f1; }
+        html, body, #map { height: 100%; }
+        #feature { position: absolute; top: 10px; left: 10px; padding: 6px 10px; background: rgba(255, 255, 255, 0.9); font: 13px sans-serif; border-radius: 4px; }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<div id="feature">Move the pointer over the map</div>
+<script type="module">
+    import * as maplibregl from '../../dist/maplibre-gl-dev.mjs';
+
+    // An unmodified style: its sources are Web Mercator vector tiles and it names no projection,
+    // so the map draws it in Equal Earth.
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: 'https://tiles.openfreemap.org/styles/bright',
+        center: [10, 25],
+        zoom: 1.2
+    });
+    map.addControl(new maplibregl.NavigationControl());
+    map.addControl(new maplibregl.ScaleControl());
+
+    map.on('mousemove', (e) => {
+        const [feature] = map.queryRenderedFeatures(e.point);
+        document.getElementById('feature').textContent = feature ?
+            `${feature.layer.id}: ${feature.properties.name ?? feature.properties.class ?? feature.sourceLayer}` :
+            'Nothing here';
+    });
+</script>
+</body>
+</html>

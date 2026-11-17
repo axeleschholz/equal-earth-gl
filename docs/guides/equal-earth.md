@@ -34,19 +34,29 @@ Web Mercator tiles hold no data beyond 85.051° of latitude. The strip from ther
 - **Tile detail.** A Mercator tile covers less of the screen the closer it is to a pole, so the map loads coarser tiles there: it picks the zoom level at which a tile's area on screen is closest to that of a tile on a flat map.
 - **Angles.** Equal Earth keeps areas, not shapes. Shapes are sheared away from the central meridian and flattened toward the poles.
 
-## What is drawn so far
+## What is drawn
 
-This is stage 1 of 4.
+This is stage 2 of 4: every 2D layer type is drawn, from tile sources and from GeoJSON, so an ordinary basemap style renders complete, with its labels.
 
 | | From tile sources | From GeoJSON sources |
 |---|---|---|
 | `background`, `fill`, `line`, `raster` | Yes | Yes |
-| `symbol`, `circle`, `heatmap` | Not yet | Yes |
-| `hillshade`, `color-relief`, `fill-extrusion` | Not yet | `fill-extrusion` is untested |
+| `symbol`, `circle`, `heatmap` | Yes | Yes |
+| `hillshade`, `color-relief` | Yes | Does not apply |
+| `fill-extrusion` | Not yet | Untested |
 
-A layer that is not drawn yet is left out, with one console warning for its type: `symbol layers on tile sources are not yet drawn in the equal-earth projection.` The rest of the style is drawn.
+Image, video and canvas sources are drawn too: their corners are placed in Web Mercator and the image is warped with the tiles. `queryRenderedFeatures` and `querySourceFeatures` work for every source.
 
-Not covered yet either: terrain, the sky, custom layers, and image, video and canvas sources. `queryRenderedFeatures` finds the features of GeoJSON sources; for tile sources it returns nothing yet, with a console warning. `querySourceFeatures` works for both. `line-dasharray` and `line-pattern` on tile sources stretch with the projection. A line, circle or label from a GeoJSON source that lies on the edge of the world extends past it by its own size.
+A `fill-extrusion` layer on a tile source is left out, with one console warning. The rest of the style is drawn. Terrain, the sky and custom layers are not covered yet.
+
+## Differences on tile sources
+
+- **Labels and icons face the screen.** On a tile source, `text-pitch-alignment: map` and `icon-pitch-alignment: map` behave as `viewport`: text lying on the map would take on the stretch and shear of the projection. Labels along lines still follow their lines. Circles and heatmaps do lie on a pitched map and stay round.
+- **Lengths that follow the tile.** `line-dasharray`, `line-pattern`, the spacing of labels along a line, and `*-translate` with a `map` anchor are laid out in tile units, so they stretch with the projection, most toward the poles.
+- **Tile zoom.** Away from the equator the map draws tiles of a lower zoom level than a Mercator map does at the same zoom, so a source's most detailed tiles appear a little later as you zoom in.
+- **Clicks near the poles.** The tolerance of `queryRenderedFeatures` around thin lines is measured in tile units, so it is uneven where the projection stretches tiles most.
+
+A line, circle or label from a GeoJSON source that lies on the edge of the world extends past it by its own size.
 
 ## Performance
 

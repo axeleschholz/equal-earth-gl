@@ -2,6 +2,25 @@
 ### ✨ Features and improvements
 - _...Add new stuff here..._
 
+## 6.18.0-ee.2
+
+Every 2D layer type and feature query now works on tile sources in `equal-earth`, so an unmodified basemap style renders complete, with labels.
+
+### ✨ Features and improvements
+
+- Draw `symbol`, `circle`, `heatmap`, `hillshade` and `color-relief` layers from Web Mercator tile sources in `equal-earth`
+- Find the features of tile sources with `queryRenderedFeatures` in `equal-earth`
+- Draw image, video and canvas sources in `equal-earth`
+
+### 🐞 Bug fixes
+
+- Fix tiles north and south of a tile source's `bounds` in Equal Earth plane coordinates not loading in `equal-earth`, which left the map blank toward the poles
+
+### Known limits
+
+- `fill-extrusion` layers on tile sources are left out in `equal-earth`, with a console warning; terrain, the sky and custom layers are not covered yet
+- On tile sources in `equal-earth`, text and icons with pitch alignment `map` are drawn as `viewport`
+
 ## 6.18.0-ee.1
 
 The first release of the Equal Earth fork, on MapLibre GL JS 6.18.0. See the [Equal Earth guide](docs/guides/equal-earth.md).

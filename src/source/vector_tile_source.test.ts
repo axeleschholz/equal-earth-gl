@@ -12,6 +12,7 @@ import {RequestManager} from '../util/request_manager.ts';
 import fixturesSource from '../../test/unit/assets/source.json' with {type: 'json'};
 import {getMockDispatcher, getWrapDispatcher, sleep, waitForEvent, waitForMetadataEvent} from '../util/test/util.ts';
 import {type ActorMessage, MessageType} from '../util/actor_messages.ts';
+import {EqualEarthProjection} from '../geo/projection/equal_earth_projection.ts';
 
 import type {Map} from '../ui/map.ts';
 import type {WorkerTileParameters} from './worker_source.ts';
@@ -457,6 +458,23 @@ describe('VectorTileSource', () => {
 
         await waitForMetadataEvent(source);
         expect(source.tileBounds.bounds).toEqual({_sw: {lng: -47, lat: -7}, _ne: {lng: -45, lat: 90}});
+    });
+
+    test('builds tile bounds with mercator on a plane that mercator tiles are warped onto', async () => {
+        const source = new VectorTileSource('id', {minzoom: 0, maxzoom: 14, tiles: ['http://example.com/{z}/{x}/{y}.png'], bounds: [-180, -85.0511, 180, 85.0511]} as any, getMockDispatcher(), undefined);
+        source.onAdd({
+            transform: {showCollisionBoxes: false},
+            _getMapId: () => 1,
+            _requestManager: new RequestManager(),
+            style: {tileManagers: {id: {clearTiles: () => {}}}, projection: new EqualEarthProjection()},
+            getGlobalState: () => ({}),
+            getPixelRatio() { return 1; },
+        } as any as Map);
+        await waitForMetadataEvent(source);
+
+        for (const [z, x, y] of [[3, 4, 1], [3, 4, 0], [3, 0, 7], [0, 0, 0], [4, 8, 4]]) {
+            expect(source.hasTile(new OverscaledTileID(z, 0, z, x, y)), `${z}/${x}/${y}`).toBeTruthy();
+        }
     });
 
     test('builds tile bounds with the map projection', async () => {

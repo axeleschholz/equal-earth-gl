@@ -7,6 +7,7 @@ import {ResourceType} from '../util/request_manager.ts';
 import {MessageType} from '../util/actor_messages.ts';
 import {isAbortError} from '../util/abort_error.ts';
 import {TileManager} from '../tile/tile_manager.ts';
+import {featureGeometryHelper} from './query_features.ts';
 
 import type {Source} from './source.ts';
 import type {CanonicalTileID, OverscaledTileID} from '../tile/tile_id.ts';
@@ -134,7 +135,7 @@ export class VectorTileSource extends Evented<SourceEventType> implements Source
             this._loaded = true;
             if (tileJSON) {
                 extend(this, tileJSON);
-                if (tileJSON.bounds) this.tileBounds = new TileBounds(tileJSON.bounds, this.minzoom, this.maxzoom, this.map.style.projection.worldCoordinateHelper);
+                if (tileJSON.bounds) this.tileBounds = new TileBounds(tileJSON.bounds, this.minzoom, this.maxzoom, featureGeometryHelper(undefined, this.map.style.projection.worldCoordinateHelper));
 
                 // `content` is included here to prevent a race condition where `Style._updateSources` is called
                 // before the TileJSON arrives. this makes sure the tiles needed are loaded once TileJSON arrives

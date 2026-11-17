@@ -8,6 +8,7 @@ import {TileBounds} from '../tile/tile_bounds.ts';
 import {Texture} from '../webgl/texture.ts';
 import {RGBAImage} from '../util/image.ts';
 import {isAbortError} from '../util/abort_error.ts';
+import {featureGeometryHelper} from './query_features.ts';
 
 import type {Source} from './source.ts';
 import type {OverscaledTileID} from '../tile/tile_id.ts';
@@ -100,7 +101,7 @@ export class RasterTileSource extends Evented<SourceEventType> implements Source
             this._loaded = true;
             if (tileJSON) {
                 extend(this, tileJSON);
-                if (tileJSON.bounds) this.tileBounds = new TileBounds(tileJSON.bounds, this.minzoom, this.maxzoom, this.map.style.projection.worldCoordinateHelper);
+                if (tileJSON.bounds) this.tileBounds = new TileBounds(tileJSON.bounds, this.minzoom, this.maxzoom, featureGeometryHelper(undefined, this.map.style.projection.worldCoordinateHelper));
 
                 // `content` is included here to prevent a race condition where `Style._updateSources` is called
                 // before the TileJSON arrives. this makes sure the tiles needed are loaded once TileJSON arrives

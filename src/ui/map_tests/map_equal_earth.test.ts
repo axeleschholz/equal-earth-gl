@@ -57,3 +57,38 @@ describe('a map in equal-earth', () => {
         warn.mockRestore();
     });
 });
+
+describe('controls on a map in equal-earth', () => {
+    test('the scale control shows the distance across its bar at the middle of the map', async () => {
+        const {ScaleControl} = await import('../control/scale_control.ts');
+        for (const lat of [0, 60]) {
+            const map = createMap({zoom: 4, center: [10, lat], style: {version: 8, sources: {}, layers: [], projection: {type: 'equal-earth'}}});
+            await map.once('style.load');
+            const control = new ScaleControl({maxWidth: 100});
+            map.addControl(control);
+            map.jumpTo({center: [10, lat], zoom: 4});
+            const text = map.getContainer().querySelector('.maplibregl-ctrl-scale').textContent;
+            const shown = parseFloat(text);
+            expect(text).toMatch(/km$/);
+            const meters = map.unproject([50, 100]).distanceTo(map.unproject([150, 100]));
+            expect(shown * 1000).toBeLessThanOrEqual(meters * 1.001);
+            expect(shown * 1000).toBeGreaterThan(meters / 2.6);
+            expect(Math.abs(map.unproject([50, 100]).lat - lat)).toBeLessThan(1e-6);
+            map.remove();
+        }
+    });
+
+    test('fitBounds puts a country in view', async () => {
+        const map = createMap({style: {version: 8, sources: {}, layers: [], projection: {type: 'equal-earth'}}});
+        await map.once('style.load');
+        map.fitBounds([[-9.5, 36], [3.3, 43.8]], {duration: 0, padding: 10});
+        for (const corner of [[-9.5, 36], [3.3, 43.8], [-9.5, 43.8], [3.3, 36]] as Array<[number, number]>) {
+            const point = map.project(corner);
+            expect(point.x).toBeGreaterThanOrEqual(9);
+            expect(point.x).toBeLessThanOrEqual(191);
+            expect(point.y).toBeGreaterThanOrEqual(9);
+            expect(point.y).toBeLessThanOrEqual(191);
+        }
+        expect(map.getZoom()).toBeGreaterThan(2);
+    });
+});
