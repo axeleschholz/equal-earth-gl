@@ -77,6 +77,21 @@ export function equalEarthForward(lng: number, lat: number, out: [number, number
 }
 
 /**
+ * The two numbers that place a parallel on the Equal Earth plane, in metres: `x` per degree of longitude along
+ * it, and its `y`. A position's `x` is its longitude times the first, which is what makes the projection
+ * pseudocylindrical: parallels are straight, horizontal and evenly divided.
+ *
+ * @param out - the array the result is written to; a new one when omitted
+ */
+export function equalEarthParallel(lat: number, out: [number, number] = [0, 0]): [number, number] {
+    const sinBeta = Math.max(-1, Math.min(1, authalicQ(Math.sin(lat * DEG_TO_RAD)) / Q_POLE));
+    const theta = Math.asin(M * sinBeta);
+    out[0] = AUTHALIC_RADIUS * DEG_TO_RAD * Math.cos(theta) / (M * yDerivative(theta));
+    out[1] = AUTHALIC_RADIUS * yOfTheta(theta);
+    return out;
+}
+
+/**
  * The geodetic latitude, in radians, whose authalic latitude has the given sine: a series for a first value
  * and Newton steps on {@link authalicQ} to refine it, which the poles, where the derivative vanishes, skip.
  */

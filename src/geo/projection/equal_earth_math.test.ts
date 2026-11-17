@@ -5,6 +5,7 @@ import {
     equalEarthForward,
     equalEarthInverse,
     equalEarthJacobian,
+    equalEarthParallel,
 } from './equal_earth_math.ts';
 import {equalEarthReference} from './equal_earth_reference.test_data.ts';
 
@@ -120,6 +121,17 @@ describe('equalEarthJacobian', () => {
             const [a, b, c, d] = equalEarthJacobian(lng, lat);
             const ratio = (a * d - b * c) / ellipsoidAreaPerSquareDegree(lat);
             expect(Math.abs(ratio - 1)).toBeLessThan(1e-9);
+        }
+    });
+});
+
+describe('equalEarthParallel', () => {
+    test('gives the x per degree of longitude and the y of a parallel', () => {
+        for (const lat of [-90, -60, -12.5, 0, 33, 85, 90]) {
+            const [xPerDegree, y] = equalEarthParallel(lat);
+            const [x, expectedY] = equalEarthForward(137, lat);
+            expect(xPerDegree * 137).toBeCloseTo(x, 6);
+            expect(y).toBeCloseTo(expectedY, 9);
         }
     });
 });
