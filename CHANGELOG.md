@@ -2,6 +2,22 @@
 ### ✨ Features and improvements
 - _...Add new stuff here..._
 
+## 6.18.0-ee.1
+
+The first release of the Equal Earth fork, on MapLibre GL JS 6.18.0. See the [Equal Earth guide](docs/guides/equal-earth.md).
+
+### ✨ Features and improvements
+
+- Add the built-in `equal-earth` projection (EPSG:8857), which draws ordinary Web Mercator vector and raster tiles in Equal Earth at every zoom level by warping them on the GPU: `background`, `fill`, `line` and `raster` layers
+- Draw GeoJSON sources in `equal-earth` by tiling them on the Equal Earth plane in the workers, exact to both poles, cut at the antimeridian, with every layer type that a flat map draws from GeoJSON
+- Make `equal-earth` the projection of a style that names none, and add experimental `setDefaultProjection` and `getDefaultProjection` to change that, e.g. back to `mercator`
+- Re-tile GeoJSON sources when `setProjection` moves a map onto another plane
+
+### Known limits
+
+- `symbol`, `circle`, `heatmap`, `hillshade`, `color-relief` and `fill-extrusion` layers on tile sources are left out in `equal-earth`, with one console warning per type
+- Terrain, the sky, custom layers, `queryRenderedFeatures` on tile sources, and image, video and canvas sources are not covered in `equal-earth` yet
+
 ### 🐞 Bug fixes
 - _...Add new stuff here..._
 

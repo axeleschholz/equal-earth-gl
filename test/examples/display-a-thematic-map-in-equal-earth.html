@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Display a thematic map in Equal Earth</title>
+    <meta property="og:description" content="Draw a choropleth and proportional circles from GeoJSON over ordinary Web Mercator vector tiles in the Equal Earth projection, where areas keep their proportions." />
+    <meta property="og:category" content="Vector & GeoJSON" />
+    <meta property="og:created" content="2026-11-16" />
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel='stylesheet' href='../../dist/maplibre-gl.css' />
+    <style>
+        body { margin: 0; padding: 0; background: #f4f4f1; }
+        html, body, #map { height: 100%; }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<script type="module">
+    import * as maplibregl from '../../dist/maplibre-gl-dev.mjs';
+
+    // The style names no projection, so the map is drawn in Equal Earth. Its sources are ordinary
+    // Web Mercator vector tiles, which the map warps onto the Equal Earth plane as it draws them.
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: 'https://demotiles.maplibre.org/style.json',
+        center: [10, 10],
+        zoom: 1
+    });
+
+    map.on('load', () => {
+        // GeoJSON is tiled directly on the Equal Earth plane, so it reaches both poles.
+        map.addSource('countries', {
+            type: 'geojson',
+            data: 'https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_110m_admin_0_countries.geojson'
+        });
+        map.addLayer({
+            id: 'population',
+            type: 'fill',
+            source: 'countries',
+            paint: {
+                'fill-color': ['step', ['get', 'pop_est'],
+                    '#f7fbff', 5e6, '#c6dbef', 2e7, '#9ecae1', 5e7, '#6baed6', 1e8, '#3182bd', 5e8, '#08519c'],
+                'fill-opacity': 0.85
+            }
+        });
+        map.addLayer({
+            id: 'borders',
+            type: 'line',
+            source: 'countries',
+            paint: {'line-color': '#ffffff', 'line-width': 0.75}
+        });
+
+        map.addSource('earthquakes', {
+            type: 'geojson',
+            data: 'https://maplibre.org/maplibre-gl-js/docs/assets/significant-earthquakes-2015.geojson'
+        });
+        map.addLayer({
+            id: 'earthquakes',
+            type: 'circle',
+            source: 'earthquakes',
+            paint: {
+                'circle-radius': ['interpolate', ['linear'], ['get', 'mag'], 5, 2, 8, 14],
+                'circle-color': '#e6550d',
+                'circle-opacity': 0.6,
+                'circle-stroke-color': '#7f2704',
+                'circle-stroke-width': 0.5
+            }
+        });
+    });
+</script>
+</body>
+</html>

@@ -8,6 +8,7 @@ import {shaders} from '../shaders/shaders.ts';
 import {MercatorShaderDefine, MercatorShaderVariantKey} from '../geo/projection/mercator_projection.ts';
 import {getCameraMath} from '../camera/camera_math_factory.ts';
 import {getWarpedProjectionData} from '../geo/projection/warped_projection_data.ts';
+import {resolveTileGrid, type TileGrid} from '../geo/projection/tile_warp.ts';
 
 import type {Terrain, TerrainData} from './terrain.ts';
 import type {RendererProjectionData} from '../geo/projection/projection_data.ts';
@@ -25,7 +26,6 @@ import type {SkyPropsPossiblyEvaluated} from '../style/sky_properties.g.ts';
 import type {Projection, TileMeshUsage} from '../geo/projection/projection.ts';
 import type {CrossTileID, VariableOffset} from '../symbol/placement.ts';
 import type {MercatorProjectedCamera, ProjectedCamera} from '../camera/projected_camera.ts';
-import type {TileGrid} from '../geo/projection/tile_warp.ts';
 import type {WorldCoordinateHelper} from '../geo/world_types.ts';
 
 export type RenderPass = 'offscreen' | 'opaque' | 'translucent';
@@ -141,7 +141,7 @@ export class FrameRenderContext {
      */
     getProjectionDataForTile(tileID: OverscaledTileID, options: {aligned?: boolean; applyTerrainMatrix?: boolean; tileGrid?: TileGrid} = {}): RendererProjectionData {
         const warp = this.worldCoordinateHelper.mercatorTileWarp;
-        if (warp && !this.isRenderingToTexture && (options.tileGrid ?? this.currentTileGrid ?? this.worldCoordinateHelper.sourceTileGrid) === 'mercator') {
+        if (warp && !this.isRenderingToTexture && resolveTileGrid(options.tileGrid ?? this.currentTileGrid, this.worldCoordinateHelper) === 'mercator') {
             return getWarpedProjectionData(this.projectedCamera as MercatorProjectedCamera, tileID, warp);
         }
         const projectionData = getCameraMath(this.projectedCamera).getProjectionData(this.projectedCamera, {

@@ -13,8 +13,8 @@ import {UpdateQueue} from '../util/update_queue.ts';
 import {getRegisteredProjection} from '../geo/projection/projection_crud.ts';
 import {SubdivisionGranularitySetting} from '../render/subdivision_granularity_settings.ts';
 import {identityCrs} from '../geo/projection/crs.ts';
+import {resolveTileGrid, type TileGrid} from '../geo/projection/tile_warp.ts';
 
-import type {TileGrid} from '../geo/projection/tile_warp.ts';
 import type {LngLatBounds} from '../geo/lng_lat_bounds.ts';
 import type {Source} from './source.ts';
 import type {Map} from '../ui/map.ts';
@@ -574,7 +574,7 @@ export class GeoJSONSource extends Evented<SourceEventType> implements Source {
         const diff = 'data' in update || replaced ? undefined : update.diff;
         const affectedGeometries = this._applyDiffToSource(diff);
         const refreshesClusters = !('data' in update) && update.updateCluster;
-        const reloadsEveryTile = refreshesClusters || (this.tileGrid ?? this.map?.style?.projection?.worldCoordinateHelper.sourceTileGrid) === 'plane';
+        const reloadsEveryTile = refreshesClusters || (this.map?.style?.projection && resolveTileGrid(this.tileGrid, this.map.style.projection.worldCoordinateHelper)) === 'plane';
         const shouldReloadTileOptions = reloadsEveryTile ? undefined : this._getShouldReloadTileOptions(affectedGeometries);
 
         const eventData: {resourceTiming?: PerformanceResourceTiming[]} = {};

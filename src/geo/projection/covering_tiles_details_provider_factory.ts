@@ -2,11 +2,11 @@ import {MercatorCoveringTilesDetailsProvider} from './mercator_covering_tiles_de
 import {GlobeCoveringTilesDetailsProvider} from './globe_covering_tiles_details_provider.ts';
 import {WarpedCoveringTilesDetailsProvider} from './warped_covering_tiles_details_provider.ts';
 import {renderedProjectedCamera} from '../../camera/projected_camera.ts';
+import {resolveTileGrid, type TileGrid, type TileWarp} from './tile_warp.ts';
 
 import type {CoveringTilesDetailsProvider} from './covering_tiles_details_provider.ts';
 import type {ProjectedCamera} from '../../camera/projected_camera.ts';
 import type {WorldCoordinateHelper} from '../world_types.ts';
-import type {TileGrid, TileWarp} from './tile_warp.ts';
 
 /** The mercator provider. Neither provider holds anything of a map's, so one of each serves every map. */
 let mercatorProvider: MercatorCoveringTilesDetailsProvider | null = null;
@@ -26,7 +26,7 @@ const warpedProviders = new WeakMap<TileWarp, WarpedCoveringTilesDetailsProvider
 export function getCoveringTilesDetailsProvider(projectedCamera: ProjectedCamera, worldCoordinateHelper?: WorldCoordinateHelper, tileGrid?: TileGrid): CoveringTilesDetailsProvider {
     if (renderedProjectedCamera(projectedCamera).projection === 'mercator') {
         const warp = worldCoordinateHelper?.mercatorTileWarp;
-        if (warp && (tileGrid ?? worldCoordinateHelper.sourceTileGrid) === 'mercator') {
+        if (warp && resolveTileGrid(tileGrid, worldCoordinateHelper) === 'mercator') {
             let provider = warpedProviders.get(warp);
             if (!provider) {
                 provider = new WarpedCoveringTilesDetailsProvider(warp);

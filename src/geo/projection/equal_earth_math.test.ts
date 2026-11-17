@@ -7,7 +7,7 @@ import {
     equalEarthJacobian,
     equalEarthParallel,
 } from './equal_earth_math.ts';
-import {equalEarthReference} from './equal_earth_reference.test_data.ts';
+import {equalEarthReference} from '../../../test/unit/lib/equal_earth_reference.ts';
 
 /** A small deterministic random number generator, so failures reproduce. */
 function seededRandom(seed: number): () => number {

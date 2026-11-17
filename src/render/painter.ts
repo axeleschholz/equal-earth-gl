@@ -31,6 +31,7 @@ import {isRasterStyleLayer} from '../style/style_layer/raster_style_layer.ts';
 import {isBackgroundStyleLayer} from '../style/style_layer/background_style_layer.ts';
 import {isCustomStyleLayer} from '../style/style_layer/custom_style_layer.ts';
 import {warnOnce} from '../util/util.ts';
+import {resolveTileGrid} from '../geo/projection/tile_warp.ts';
 
 import type {OverscaledTileID} from '../tile/tile_id.ts';
 import type {TileManager} from '../tile/tile_manager.ts';
@@ -659,7 +660,7 @@ const LAYER_TYPES_NOT_WARPED = new Set(['symbol', 'circle', 'heatmap', 'hillshad
  */
 function drawsOnWarpedTiles(layer: StyleLayer, tileManager: TileManager | undefined, worldCoordinateHelper: WorldCoordinateHelper): boolean {
     if (!worldCoordinateHelper.mercatorTileWarp || !LAYER_TYPES_NOT_WARPED.has(layer.type)) return true;
-    if ((tileManager?.getSource()?.tileGrid ?? worldCoordinateHelper.sourceTileGrid) !== 'mercator') return true;
+    if (resolveTileGrid(tileManager?.getSource()?.tileGrid, worldCoordinateHelper) !== 'mercator') return true;
     warnOnce(`${layer.type} layers on tile sources are not yet drawn in the ${worldCoordinateHelper.name} projection.`);
     return false;
 }

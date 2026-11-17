@@ -6,6 +6,15 @@ export type TileGrid = 'mercator' | 'plane';
 
 /**
  * @internal
+ * The grid a source's tiles are cut in: its own when it has one, see `Source.tileGrid`, or else the one the map's
+ * sources are taken to be cut in on the plane, see `WorldCoordinateHelper.sourceTileGrid`.
+ */
+export function resolveTileGrid(ownTileGrid: TileGrid | undefined, plane: {sourceTileGrid: TileGrid}): TileGrid {
+    return ownTileGrid ?? plane.sourceTileGrid;
+}
+
+/**
+ * @internal
  * How the tiles of the mercator grid lie on a world plane that is not mercator: a tile's square becomes a curved
  * shape there, and everything that draws, selects or queries such tiles goes through this mapping. The shaders
  * of the projection compute the same mapping on the GPU.
