@@ -1,0 +1,46 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "height": 256,
+      "width": 256,
+      "allowed": 0.05,
+      "description": "Hillshade at 72 degrees north is shaded as at lower latitudes, with slopes scaled by the latitudes of its mercator tiles."
+    }
+  },
+  "center": [
+    20,
+    72
+  ],
+  "zoom": 5.6,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "sources": {
+    "hillshadeSource": {
+      "type": "raster-dem",
+      "tiles": [
+        "local://tiles/terrain/5-5-12.terrain.png"
+      ],
+      "minzoom": 4,
+      "maxzoom": 4
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "white"
+      }
+    },
+    {
+      "id": "hills",
+      "type": "hillshade",
+      "source": "hillshadeSource",
+      "layout": {
+        "visibility": "visible"
+      }
+    }
+  ]
+}

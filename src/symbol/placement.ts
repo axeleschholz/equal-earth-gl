@@ -79,11 +79,15 @@ export class RetainedQueryData {
     bucketIndex: number;
     tileID: OverscaledTileID;
     featureSortOrder: number[];
+    /** The grid of the tile the bucket is from, see `Tile.tileGrid`, which says how its features turn into lng/lat. */
+    tileGrid: TileGrid | undefined;
     constructor(bucketInstanceId: number,
         featureIndex: FeatureIndex,
         sourceLayerIndex: number,
         bucketIndex: number,
-        tileID: OverscaledTileID) {
+        tileID: OverscaledTileID,
+        tileGrid?: TileGrid) {
+        this.tileGrid = tileGrid;
         this.bucketInstanceId = bucketInstanceId;
         this.featureIndex = featureIndex;
         this.sourceLayerIndex = sourceLayerIndex;
@@ -324,7 +328,8 @@ export class Placement {
             bucketFeatureIndex,
             symbolBucket.sourceLayerIndex,
             symbolBucket.index,
-            tile.tileID
+            tile.tileID,
+            tile.tileGrid
         );
 
         const parameters: TileLayerParameters = {

@@ -3022,4 +3022,46 @@ describe('TileManager.tilesIn on a plane that mercator tiles are warped onto', (
         expect(tileManager.tilesIn([new Point(5, 5)], 1, false, projectedCamera, helper)).toEqual([]);
         expect(tileManager.tilesIn([new Point(5, 5), new Point(20, 5), new Point(20, 20), new Point(5, 5)], 1, false, projectedCamera, helper)).toEqual([]);
     });
+
+    test('finds the tiles of the world inside a box whose corners are all beside it', async () => {
+        const {tileManager, projectedCamera, helper} = await equalEarthTiles([0, 0], 0);
+        const viewport = [new Point(0, 0), new Point(512, 0), new Point(512, 512), new Point(0, 512), new Point(0, 0)];
+        expect(tileManager.tilesIn(viewport, 1, false, projectedCamera, helper).length).toBeGreaterThan(0);
+    });
+
+    test('gives a tile a scale that makes a pixel no smaller in tile units than the tile is drawn', async () => {
+        for (const [center, zoom] of [[[20, 0], 3], [[20, 52], 4], [[20, 70], 5], [[20, 78], 6]] as Array<[[number, number], number]>) {
+            const {tileManager, projectedCamera, helper} = await equalEarthTiles(center, zoom);
+            const box = [new Point(254, 254), new Point(258, 254), new Point(258, 258), new Point(254, 258), new Point(254, 254)];
+            const results = tileManager.tilesIn(box, 1, false, projectedCamera, helper);
+            expect(results.length).toBeGreaterThan(0);
+            for (const {tile, tileID, queryGeometry, scale} of results) {
+                const inside = queryGeometry[0].x >= 0 && queryGeometry[0].x <= 8192 && queryGeometry[0].y >= 0 && queryGeometry[0].y <= 8192;
+                if (!inside) continue;
+                const tileUnitsPerPixel = 8192 / (tile.tileSize * scale);
+                const origin = drawnAt(projectedCamera, helper, tileID, queryGeometry[0]);
+                const alongX = drawnAt(projectedCamera, helper, tileID, new Point(queryGeometry[0].x + tileUnitsPerPixel, queryGeometry[0].y));
+                const alongY = drawnAt(projectedCamera, helper, tileID, new Point(queryGeometry[0].x, queryGeometry[0].y + tileUnitsPerPixel));
+                expect(origin.dist(alongX), `x at ${center[1]}`).toBeGreaterThan(0.98);
+                expect(origin.dist(alongY), `y at ${center[1]}`).toBeGreaterThan(0.98);
+                expect(Math.min(origin.dist(alongX), origin.dist(alongY)), `tight axis at ${center[1]}`).toBeLessThan(1.1);
+            }
+        }
+    });
+
+    test('keeps the geometry and the scale of a box over the whole world within reason', async () => {
+        const {tileManager, projectedCamera, helper} = await equalEarthTiles([10, 25], 1.2);
+        const viewport = [new Point(0, 0), new Point(512, 0), new Point(512, 512), new Point(0, 512), new Point(0, 0)];
+        const results = tileManager.tilesIn(viewport, 1, false, projectedCamera, helper);
+        expect(results.length).toBeGreaterThan(0);
+        const flatScale = Math.pow(2, 1.2 - 1);
+        for (const {queryGeometry, scale, tileID} of results) {
+            const tiles = Math.pow(2, tileID.canonical.z);
+            for (const point of queryGeometry) {
+                expect(Math.abs(point.y)).toBeLessThanOrEqual(8192 * tiles);
+                expect(Math.abs(point.x)).toBeLessThanOrEqual(8192 * tiles);
+            }
+            expect(scale).toBeGreaterThan(flatScale / 8);
+        }
+    });
 });

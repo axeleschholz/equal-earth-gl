@@ -1,3 +1,7 @@
+import {mercatorWorldCoordinateHelper} from '../mercator_coordinate.ts';
+
+import type {WorldCoordinateHelper} from '../world_types.ts';
+
 /**
  * The grid a source's tiles are cut in: `mercator` for Web Mercator tiles, or `plane` for the quad grid of the
  * world plane the map is drawn on. The two are the same grid on a mercator map.
@@ -11,6 +15,16 @@ export type TileGrid = 'mercator' | 'plane';
  */
 export function resolveTileGrid(ownTileGrid: TileGrid | undefined, plane: {sourceTileGrid: TileGrid}): TileGrid {
     return ownTileGrid ?? plane.sourceTileGrid;
+}
+
+/**
+ * @internal
+ * The world mapping that turns the tile coordinates of a source's features back into lng/lat: the plane's, except
+ * for a source of mercator tiles on a plane those are warped onto, whose tile coordinates are mercator's.
+ */
+export function featureGeometryHelper(sourceTileGrid: TileGrid | undefined, worldCoordinateHelper: WorldCoordinateHelper): WorldCoordinateHelper {
+    const warped = worldCoordinateHelper.mercatorTileWarp && resolveTileGrid(sourceTileGrid, worldCoordinateHelper) === 'mercator';
+    return warped ? mercatorWorldCoordinateHelper : worldCoordinateHelper;
 }
 
 /**

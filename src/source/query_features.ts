@@ -1,6 +1,5 @@
 import {getCameraMath} from '../camera/camera_math_factory.ts';
-import {mercatorWorldCoordinateHelper} from '../geo/mercator_coordinate.ts';
-import {resolveTileGrid, type TileGrid} from '../geo/projection/tile_warp.ts';
+import {featureGeometryHelper} from '../geo/projection/tile_warp.ts';
 import {withTileWarp} from '../camera/warped_camera.ts';
 
 import type Point from '@mapbox/point-geometry';
@@ -110,16 +109,6 @@ function queryIncludes3DLayer(layers: Set<string> | undefined, styleLayers: {[_:
 }
 
 /**
- * @internal
- * The world mapping that turns the tile coordinates of a source's features back into lng/lat: the plane's, except
- * for a source of mercator tiles on a plane those are warped onto, whose tile coordinates are mercator's.
- */
-export function featureGeometryHelper(sourceTileGrid: TileGrid | undefined, worldCoordinateHelper: WorldCoordinateHelper): WorldCoordinateHelper {
-    const warped = worldCoordinateHelper.mercatorTileWarp && resolveTileGrid(sourceTileGrid, worldCoordinateHelper) === 'mercator';
-    return warped ? mercatorWorldCoordinateHelper : worldCoordinateHelper;
-}
-
-/**
  * The features of a source that are drawn at a place on screen. The tiles of a source of mercator tiles on a plane
  * those are warped onto are queried with the camera that carries the warp, see `withTileWarp`, and their features
  * get their lng/lat from mercator's world mapping, see {@link featureGeometryHelper}.
@@ -195,7 +184,7 @@ export function queryRenderedSymbols(styleLayers: {[_: string]: StyleLayer},
             {
                 filterSpec: params.filter,
                 globalState: params.globalState,
-                worldCoordinateHelper
+                worldCoordinateHelper: worldCoordinateHelper.mercatorTileWarp ? featureGeometryHelper(queryData.tileGrid, worldCoordinateHelper) : worldCoordinateHelper
             },
             params.layers,
             params.availableImages,

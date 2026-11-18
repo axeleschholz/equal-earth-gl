@@ -10,6 +10,7 @@ import {
     Uniform4f
 } from '../uniform_binding.ts';
 import {EXTENT} from '../../data/extent.ts';
+import {featureGeometryHelper} from '../../geo/projection/tile_warp.ts';
 
 import type {Context} from '../../webgl/context.ts';
 import type {UniformValues, UniformLocations} from '../uniform_binding.ts';
@@ -142,19 +143,22 @@ function getLog2WorldWidth(worldCoordinateHelper: WorldCoordinateHelper): number
  * The latitudes of the tile's top and bottom edges, which the hillshade shader uses to correct the mercator
  * scale distortion of slopes (it scales by `cos(lat)`). Only the wrapping, cylindrical mercator plane stretches
  * with latitude; any other plane is rendered in its own units and gets `[0, 0]`: `cos(0)` is 1 and the shader
- * applies no correction.
+ * applies no correction. The tile's rows are rows of the mercator grid whatever plane those tiles are drawn on, so
+ * their latitudes come from the world mapping of that grid.
  */
 function getTileLatRange(worldCoordinateHelper: WorldCoordinateHelper, tileID: OverscaledTileID): [number, number] {
     if (worldCoordinateHelper.sourceTileGrid !== 'mercator') return [0, 0];
     // for scaling the magnitude of a points slope by its latitude
     const tilesAtZoom = Math.pow(2, tileID.canonical.z);
     const y = tileID.canonical.y;
+    const tileGridHelper = featureGeometryHelper(undefined, worldCoordinateHelper);
     return [
-        worldCoordinateHelper.lngLatFromWorld(0, y / tilesAtZoom).lat,
-        worldCoordinateHelper.lngLatFromWorld(0, (y + 1) / tilesAtZoom).lat];
+        tileGridHelper.lngLatFromWorld(0, y / tilesAtZoom).lat,
+        tileGridHelper.lngLatFromWorld(0, (y + 1) / tilesAtZoom).lat];
 }
 
 export {
+    getTileLatRange,
     hillshadeUniforms,
     hillshadePrepareUniforms,
     hillshadeUniformValues,

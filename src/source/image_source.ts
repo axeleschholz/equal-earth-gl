@@ -14,7 +14,7 @@ import {
 } from '../webgl/program/raster_program.ts';
 import {mat2} from 'gl-matrix';
 import {createTileMeshWithBuffers} from '../util/create_tile_mesh.ts';
-import {featureGeometryHelper} from './query_features.ts';
+import {featureGeometryHelper} from '../geo/projection/tile_warp.ts';
 
 import type {Source} from './source.ts';
 import type {MercatorCoordinate} from '../geo/mercator_coordinate.ts';

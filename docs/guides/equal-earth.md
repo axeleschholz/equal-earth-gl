@@ -52,9 +52,9 @@ A `fill-extrusion` layer on a tile source is left out, with one console warning.
 ## Differences on tile sources
 
 - **Labels and icons face the screen.** On a tile source, `text-pitch-alignment: map` and `icon-pitch-alignment: map` behave as `viewport`: text lying on the map would take on the stretch and shear of the projection. Labels along lines still follow their lines. Circles and heatmaps do lie on a pitched map and stay round.
-- **Lengths that follow the tile.** `line-dasharray`, `line-pattern`, the spacing of labels along a line, and `*-translate` with a `map` anchor are laid out in tile units, so they stretch with the projection, most toward the poles.
+- **Lengths that follow the tile.** `line-dasharray`, `line-pattern`, the spacing of labels along a line, and the `*-translate` properties are laid out in tile units, so they stretch with the projection, most toward the poles.
 - **Tile zoom.** Away from the equator the map draws tiles of a lower zoom level than a Mercator map does at the same zoom, so a source's most detailed tiles appear a little later as you zoom in.
-- **Clicks near the poles.** The tolerance of `queryRenderedFeatures` around thin lines is measured in tile units, so it is uneven where the projection stretches tiles most.
+- **Clicks away from the equator.** `queryRenderedFeatures` measures the tolerance around a line or circle in tile units, which the projection stretches unevenly. It is set so that a feature can be hit wherever it is drawn, which makes it more generous than drawn along the other direction: at 70° north, up to about three times as wide east to west. A query at a place beyond 85.051° of latitude finds nothing from tile sources, which hold nothing there.
 
 A line, circle or label from a GeoJSON source that lies on the edge of the world extends past it by its own size.
 

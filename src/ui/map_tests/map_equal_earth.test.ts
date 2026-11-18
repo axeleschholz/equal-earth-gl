@@ -22,7 +22,7 @@ describe('a map in equal-earth', () => {
 
     test('gives the features of a mercator vector tile source their true positions', async () => {
         const {GeoJSONFeature} = await import('../../util/vectortile_to_geojson.ts');
-        const {featureGeometryHelper} = await import('../../source/query_features.ts');
+        const {featureGeometryHelper} = await import('../../geo/projection/tile_warp.ts');
         const {equalEarthWorldCoordinateHelper} = await import('../../geo/projection/equal_earth_world.ts');
         const {mercatorWorldCoordinateHelper} = await import('../../geo/mercator_coordinate.ts');
         expect(featureGeometryHelper(undefined, equalEarthWorldCoordinateHelper)).toBe(mercatorWorldCoordinateHelper);
@@ -55,6 +55,39 @@ describe('a map in equal-earth', () => {
         expect(args[8]).toBe(mercatorWorldCoordinateHelper);
         expect(warn).not.toHaveBeenCalled();
         warn.mockRestore();
+    });
+});
+
+describe('queries and shading of mercator tiles in equal-earth', () => {
+    test('gives the features of labels their lng/lat from the grid of their tile', async () => {
+        const {queryRenderedSymbols} = await import('../../source/query_features.ts');
+        const {equalEarthWorldCoordinateHelper} = await import('../../geo/projection/equal_earth_world.ts');
+        const {mercatorWorldCoordinateHelper} = await import('../../geo/mercator_coordinate.ts');
+        const lookups: any[] = [];
+        const featureIndex = {lookupSymbolFeatures: (...args: any[]) => { lookups.push(args[4].worldCoordinateHelper); return {}; }};
+        const tileID = {overscaledZ: 0, canonical: {x: 0, y: 0}, wrap: 0};
+        const retained = {
+            1: {bucketInstanceId: 1, featureIndex, tileID, tileGrid: undefined},
+            2: {bucketInstanceId: 2, featureIndex, tileID, tileGrid: 'plane'},
+        } as any;
+        const collisionIndex = {queryRenderedSymbols: () => ({1: [0], 2: [0]})} as any;
+        queryRenderedSymbols({}, {}, {}, [], {} as any, collisionIndex, retained, equalEarthWorldCoordinateHelper);
+        expect(lookups).toEqual([mercatorWorldCoordinateHelper, equalEarthWorldCoordinateHelper]);
+    });
+
+    test('scales hillshade slopes by the latitudes of the mercator tile', async () => {
+        const {getTileLatRange} = await import('../../webgl/program/hillshade_program.ts');
+        const {equalEarthWorldCoordinateHelper} = await import('../../geo/projection/equal_earth_world.ts');
+        const {mercatorWorldCoordinateHelper} = await import('../../geo/mercator_coordinate.ts');
+        const {OverscaledTileID} = await import('../../tile/tile_id.ts');
+        for (const [z, x, y] of [[3, 4, 1], [3, 4, 0], [5, 5, 12], [2, 1, 3]]) {
+            const tileID = new OverscaledTileID(z, 0, z, x, y);
+            const onMercator = getTileLatRange(mercatorWorldCoordinateHelper, tileID);
+            const onEqualEarth = getTileLatRange(equalEarthWorldCoordinateHelper, tileID);
+            expect(onEqualEarth[0]).toBeCloseTo(onMercator[0], 9);
+            expect(onEqualEarth[1]).toBeCloseTo(onMercator[1], 9);
+            expect(Math.abs(onEqualEarth[0])).toBeLessThan(86);
+        }
     });
 });
 

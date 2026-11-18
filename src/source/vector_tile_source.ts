@@ -7,7 +7,7 @@ import {ResourceType} from '../util/request_manager.ts';
 import {MessageType} from '../util/actor_messages.ts';
 import {isAbortError} from '../util/abort_error.ts';
 import {TileManager} from '../tile/tile_manager.ts';
-import {featureGeometryHelper} from './query_features.ts';
+import {featureGeometryHelper} from '../geo/projection/tile_warp.ts';
 
 import type {Source} from './source.ts';
 import type {CanonicalTileID, OverscaledTileID} from '../tile/tile_id.ts';

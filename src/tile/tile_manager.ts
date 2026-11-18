@@ -1,7 +1,7 @@
 import {create as createSource} from '../source/source.ts';
 import {Tile} from './tile.ts';
 import {ErrorEvent, Evented} from '../util/evented.ts';
-import {ensureError} from '../util/util.ts';
+import {clamp, ensureError, MAX_VALID_LATITUDE} from '../util/util.ts';
 import {TileCache} from './tile_cache.ts';
 import {MercatorCoordinate} from '../geo/mercator_coordinate.ts';
 import {EXTENT} from '../data/extent.ts';
@@ -20,7 +20,8 @@ import {InViewTiles} from './tile_manager_in_view_tiles.ts';
 import {MapSourceDataEvent, type SourceEventType} from '../ui/events.ts';
 import {getCameraMath} from '../camera/camera_math_factory.ts';
 import {mercatorWorldCoordinateHelper} from '../geo/mercator_coordinate.ts';
-import {resolveTileGrid} from '../geo/projection/tile_warp.ts';
+import {resolveTileGrid, type TileWarp} from '../geo/projection/tile_warp.ts';
+import {LngLat} from '../geo/lng_lat.ts';
 import Point from '@mapbox/point-geometry';
 
 import type {Context} from '../webgl/context.ts';
@@ -916,7 +917,10 @@ export class TileManager extends Evented<SourceEventType> {
      * The tiles of a source of mercator tiles on a plane those are warped onto get the geometry in their own, mercator
      * coordinates: each point goes from the screen to the plane, from there to its lng/lat and on to mercator. The
      * straight sides of a query box are curves in a mercator tile, so long ones are split first. A geometry that
-     * lies beside the world altogether finds no tiles.
+     * lies beside the world altogether finds no tiles. The scale each of these tiles gets, which turns pixels into
+     * tile units for the tolerance around features, is that of the direction the warp shrinks the tile most in at
+     * the middle of the query, so that a feature can be hit wherever it is drawn. Mercator tiles end at 85.051
+     * degrees of latitude, and a point of the geometry beyond that is taken to be on that edge.
      */
     tilesIn(pointQueryGeometry: Point[], maxPitchScaleFactor: number, has3DLayer: boolean, projectedCamera: ProjectedCamera | undefined = this.projectedCamera, worldCoordinateHelper: WorldCoordinateHelper | undefined = this.worldCoordinateHelper): TileResult[] {
         const tileResults: TileResult[] = [];
@@ -930,20 +934,25 @@ export class TileManager extends Evented<SourceEventType> {
 
         const cameraMath = getCameraMath(projectedCamera);
         let project = (point: Point) => cameraMath.screenPointToMercatorCoordinate(projectedCamera, worldCoordinateHelper, point, this.terrain);
-        if (worldCoordinateHelper.mercatorTileWarp && resolveTileGrid(this._source.tileGrid, worldCoordinateHelper) === 'mercator') {
-            if (!pointQueryGeometry.some(point => cameraMath.isPointOnMapSurface(projectedCamera, worldCoordinateHelper, point, this.terrain))) return tileResults;
+        const warp = resolveTileGrid(this._source.tileGrid, worldCoordinateHelper) === 'mercator' ? worldCoordinateHelper.mercatorTileWarp : null;
+        if (warp) {
+            const reachesWorld = pointQueryGeometry.some(point => cameraMath.isPointOnMapSurface(projectedCamera, worldCoordinateHelper, point, this.terrain)) ||
+                WORLD_SAMPLES.some(([lng, lat]) => polygonContainsPoint(pointQueryGeometry, cameraMath.locationToScreenPoint(projectedCamera, worldCoordinateHelper, new LngLat(lng, lat), this.terrain)));
+            if (!reachesWorld) return tileResults;
             pointQueryGeometry = splitLongEdges(pointQueryGeometry, MAX_WARPED_QUERY_EDGE);
             const toPlane = project;
             project = (point: Point) => {
                 const onPlane = toPlane(point);
                 const lngLat = worldCoordinateHelper.lngLatFromWorld(onPlane.x, onPlane.y);
-                return mercatorWorldCoordinateHelper.worldFromLngLat(lngLat.lng, lngLat.lat);
+                return mercatorWorldCoordinateHelper.worldFromLngLat(lngLat.lng, clamp(lngLat.lat, -MAX_VALID_LATITUDE, MAX_VALID_LATITUDE));
             };
         }
         const queryGeometry = this.transformBbox(pointQueryGeometry, project, !allowWorldCopies);
         const cameraQueryGeometry = this.transformBbox(cameraPointQueryGeometry, project, !allowWorldCopies);
 
         const ids = this.getIds();
+        const queryBounds = Bounds.fromPoints(queryGeometry);
+        const queryCenter = new MercatorCoordinate((queryBounds.minX + queryBounds.maxX) / 2, (queryBounds.minY + queryBounds.maxY) / 2);
 
         const cameraBounds = Bounds.fromPoints(cameraQueryGeometry);
 
@@ -955,7 +964,8 @@ export class TileManager extends Evented<SourceEventType> {
             }
             // if the projection does not render world copies then we need to explicitly check for the bounding box crossing the antimeridian
             const tileIDs = allowWorldCopies ? [tile.tileID] : [tile.tileID.unwrapTo(-1), tile.tileID.unwrapTo(0)];
-            const scale = Math.pow(2, projectedCamera.zoom - tile.tileID.overscaledZ);
+            let scale = Math.pow(2, projectedCamera.zoom - tile.tileID.overscaledZ);
+            if (warp) scale *= warpedPixelScale(warp, tile.tileID, queryCenter);
             const queryPadding = maxPitchScaleFactor * tile.queryPadding * EXTENT / tile.tileSize / scale;
 
             for (const tileID of tileIDs) {
@@ -1107,4 +1117,35 @@ function splitLongEdges(points: Point[], maxLength: number): Point[] {
         result.push(to);
     }
     return result;
+}
+
+/** Places across the world, as lng/lat, that tell whether a query polygon whose corners are all beside the world holds it. */
+const WORLD_SAMPLES: Array<[number, number]> = [];
+for (const lng of [-180, -135, -90, -45, 0, 45, 90, 135, 180]) {
+    for (const lat of [-90, -60, -30, 0, 30, 60, 90]) {
+        WORLD_SAMPLES.push([lng, lat]);
+    }
+}
+
+/** Whether a point is inside a ring of points, by counting the sides of the ring a ray from the point crosses. */
+function polygonContainsPoint(ring: Point[], point: Point): boolean {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const a = ring[i];
+        const b = ring[j];
+        if ((a.y > point.y) !== (b.y > point.y) && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+    }
+    return inside;
+}
+
+/**
+ * How many times as large as on a flat map a tile unit is drawn where a query meets a warped tile, in the
+ * direction the warp shrinks it most: the factor that takes the flat scale of the tile to the one its features
+ * are hit with.
+ */
+function warpedPixelScale(warp: TileWarp, tileID: OverscaledTileID, queryCoordinate: MercatorCoordinate): number {
+    const tilePoint = tileID.getTilePoint(queryCoordinate);
+    const [xByTx, , , yByTy] = warp.jacobian(tileID.canonical, Math.max(0, Math.min(EXTENT, tilePoint.x)), Math.max(0, Math.min(EXTENT, tilePoint.y)));
+    const flat = 1 / (Math.pow(2, tileID.canonical.z) * EXTENT);
+    return Math.min(Math.abs(xByTx), Math.abs(yByTy)) / flat;
 }

@@ -8,7 +8,7 @@ import {TileBounds} from '../tile/tile_bounds.ts';
 import {Texture} from '../webgl/texture.ts';
 import {RGBAImage} from '../util/image.ts';
 import {isAbortError} from '../util/abort_error.ts';
-import {featureGeometryHelper} from './query_features.ts';
+import {featureGeometryHelper} from '../geo/projection/tile_warp.ts';
 
 import type {Source} from './source.ts';
 import type {OverscaledTileID} from '../tile/tile_id.ts';
