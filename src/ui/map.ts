@@ -3076,6 +3076,9 @@ export class Map extends Evented<MapEventType> {
         return tileManager.loaded();
     }
 
+    /** The terrain last asked for with `setTerrain`, whether or not the map's projection draws it, see {@link Map.getTerrain}. */
+    private _requestedTerrain: TerrainSpecification | null = null;
+
     /**
      * Loads a 3D terrain mesh, based on a "raster-dem" source.
      *
@@ -3094,6 +3097,40 @@ export class Map extends Evented<MapEventType> {
             return this;
         }
 
+        this._requestedTerrain = options;
+        if (options && this._projectionLacksTerrain()) {
+            warnOnce(`Terrain is not yet supported in the ${this.style.projection.name} projection. The map is drawn without it.`);
+            options = null;
+        }
+        return this._applyTerrain(options);
+    }
+
+    /**
+     * Whether the map's projection cannot draw terrain yet: one that warps mercator tiles onto a plane of its own,
+     * where the terrain's tiles, its elevation lookups and the camera's ray casts would each need that warp.
+     */
+    private _projectionLacksTerrain(): boolean {
+        return !!this.style.projection?.worldCoordinateHelper.mercatorTileWarp;
+    }
+
+    /**
+     * Turns the terrain last asked for on or off to match what the map's projection can draw, after the projection
+     * changed: off on one that lacks terrain, on again on one that has it.
+     */
+    private _matchTerrainToProjection(): void {
+        const requested = this._requestedTerrain;
+        if (!requested || !this.style?._loaded) return;
+        if (this._projectionLacksTerrain()) {
+            if (!this.terrain) return;
+            warnOnce(`Terrain is not yet supported in the ${this.style.projection.name} projection. The map is drawn without it.`);
+            this._applyTerrain(null);
+        } else if (!this.terrain && this.style.tileManagers[requested.source]) {
+            this._applyTerrain(requested);
+        }
+    }
+
+    /** Puts terrain in place, or with `null` takes it away. */
+    private _applyTerrain(options: TerrainSpecification | null): this {
         // clear event handlers
         if (this._terrainDataCallback) this.style.off('data', this._terrainDataCallback);
 
@@ -3162,7 +3199,8 @@ export class Map extends Evented<MapEventType> {
     }
 
     /**
-     * Get the terrain-options if terrain is loaded
+     * Get the terrain options last set. In a projection that does not draw terrain yet, such as `equal-earth`,
+     * they are kept while the map is drawn without terrain, and take effect when the map moves to one that does.
      * @returns the TerrainSpecification passed to setTerrain
      * @example
      * ```ts
@@ -3170,7 +3208,7 @@ export class Map extends Evented<MapEventType> {
      * ```
      */
     getTerrain(): TerrainSpecification | null {
-        return this.terrain?.options ?? null;
+        return this._requestedTerrain;
     }
 
     /**
@@ -4373,6 +4411,7 @@ export class Map extends Evented<MapEventType> {
         this.fire(new MapProjectionEvent({
             newProjection: this.style.projection.name,
         }));
+        this._matchTerrainToProjection();
     }
 
     _contextLost = (event: WebGLContextEvent): void => {

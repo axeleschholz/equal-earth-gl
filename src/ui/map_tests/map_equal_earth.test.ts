@@ -125,3 +125,72 @@ describe('controls on a map in equal-earth', () => {
         expect(map.getZoom()).toBeGreaterThan(2);
     });
 });
+
+describe('terrain on a map in equal-earth', () => {
+    const demStyle = (projection: string) => ({
+        version: 8 as const,
+        projection: {type: projection as any},
+        sources: {dem: {type: 'raster-dem' as const, tiles: ['http://example.com/{z}/{x}/{y}.png'], tileSize: 256}},
+        layers: [],
+    });
+
+    test('is kept off, with one warning, and remembered', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const map = createMap({style: demStyle('equal-earth')});
+        await map.once('style.load');
+        map.setTerrain({source: 'dem', exaggeration: 2});
+        map.setTerrain({source: 'dem', exaggeration: 2});
+        expect(map.terrain).toBeNull();
+        expect(map.painter.renderToTexture).toBeFalsy();
+        expect(map.getTerrain()).toEqual({source: 'dem', exaggeration: 2});
+        const warnings = warn.mock.calls.filter(call => String(call[0]).includes('Terrain is not yet supported in the equal-earth projection'));
+        expect(warnings).toHaveLength(1);
+        expect(map.getStyle().terrain).toEqual({source: 'dem', exaggeration: 2});
+        warn.mockRestore();
+        map.remove();
+    });
+
+    test('comes on when the map moves to a projection that has it, and goes off again on the way back', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const map = createMap({style: demStyle('equal-earth')});
+        await map.once('style.load');
+        map.setTerrain({source: 'dem'});
+        expect(map.terrain).toBeNull();
+
+        map.setProjection({type: 'mercator'});
+        expect(map.terrain).not.toBeNull();
+        expect(map.getTerrain()).toEqual({source: 'dem'});
+
+        map.setProjection({type: 'equal-earth'});
+        expect(map.terrain).toBeNull();
+        expect(map.getTerrain()).toEqual({source: 'dem'});
+
+        map.setTerrain(null);
+        map.setProjection({type: 'mercator'});
+        expect(map.terrain).toBeNull();
+        expect(map.getTerrain()).toBeNull();
+        warn.mockRestore();
+        map.remove();
+    });
+
+    test('is not touched on mercator', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const map = createMap({style: demStyle('mercator')});
+        await map.once('style.load');
+        map.setTerrain({source: 'dem'});
+        expect(map.terrain).not.toBeNull();
+        expect(warn.mock.calls.filter(call => String(call[0]).includes('Terrain is not yet supported'))).toHaveLength(0);
+        warn.mockRestore();
+        map.remove();
+    });
+
+    test('a style that carries terrain loads without it', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const map = createMap({style: {...demStyle('equal-earth'), terrain: {source: 'dem'}}});
+        await map.once('style.load');
+        expect(map.terrain).toBeNull();
+        expect(map.getTerrain()).toEqual({source: 'dem'});
+        warn.mockRestore();
+        map.remove();
+    });
+});
