@@ -8,6 +8,7 @@ import {getWarpedProjectionData} from '../geo/projection/warped_projection_data.
 import {mercatorWorldCoordinateHelper, mercatorXfromLng, mercatorYfromLat} from '../geo/mercator_coordinate.ts';
 import {CRSWorldCoordinateHelper, identityCrs} from '../geo/projection/crs.ts';
 import {OverscaledTileID} from '../tile/tile_id.ts';
+import {LngLat} from '../geo/lng_lat.ts';
 import {EXTENT} from '../data/extent.ts';
 import {shaderPixels, shaderProject} from '../../test/unit/lib/warped_shader_mirror.ts';
 
@@ -89,5 +90,38 @@ describe('projecting tile coordinates with a warped camera', () => {
         const center = helper.worldFromLngLat(10, 40);
         expect(Number.isFinite(flat.point.x)).toBe(true);
         expect(center.x).toBeGreaterThan(0);
+    });
+});
+
+describe('the projection data a custom layer gets with a warped camera', () => {
+    test('lets the projection\'s shader prelude place mercator coordinates on the plane', () => {
+        const camera = cameraAt(20, 30, 1);
+        const warped = withTileWarp(camera, helper, undefined);
+        const data = getCameraMath(warped).getProjectionDataForCustomLayer(warped);
+        expect(data.tileMercatorCoords).toEqual([0, 0, 1, 1]);
+        expect(data.projectionTransition).toBe(0);
+        for (const [lng, lat] of [[0, 0], [90, 66.51], [-120, -40], [179, 10]]) {
+            const expected = getCameraMath(camera).locationToScreenPoint(camera, helper, new LngLat(lng, lat));
+            const actual = shaderPixels(camera, data as any, mercatorXfromLng(lng), mercatorYfromLat(lat));
+            expect(Math.hypot(actual[0] - (expected.x - camera.width / 2), -actual[1] - (expected.y - camera.height / 2)), `${lng}, ${lat}`).toBeLessThan(0.05);
+        }
+    });
+
+    test('takes elevation in meters, as the globe does', () => {
+        const camera = cameraAt(20, 30, 3, 50, 20);
+        const warped = withTileWarp(camera, helper, undefined);
+        const data = getCameraMath(warped).getProjectionDataForCustomLayer(warped);
+        const onGround = getCameraMath(warped).projectTileCoordinates(warped, EXTENT * mercatorXfromLng(20), EXTENT * mercatorYfromLat(30), new OverscaledTileID(0, 0, 0, 0, 0).toUnwrapped(), 200000);
+        const m = data.mainMatrix;
+        const world = helper.worldFromLngLat(20, 30);
+        const clip = [0, 1, 3].map(row => m[row] * world.x + m[4 + row] * world.y + m[8 + row] * 200000 + m[12 + row]);
+        expect(clip[0] / clip[2]).toBeCloseTo(onGround.point.x, 4);
+        expect(clip[1] / clip[2]).toBeCloseTo(onGround.point.y, 4);
+    });
+
+    test('is the flat matrix data for a camera without a warp', () => {
+        const camera = cameraAt(20, 30, 1);
+        const data = getCameraMath(camera).getProjectionDataForCustomLayer(camera);
+        expect(data.fallbackMatrix).toBe(data.mainMatrix);
     });
 });

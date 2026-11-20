@@ -1,0 +1,86 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "height": 256,
+      "operations": [
+        [
+          "addCustomLayer",
+          "tent-3d-globe"
+        ]
+      ],
+      "description": "A custom layer written for the globe, which projects mercator coordinates with the shader prelude it is given, draws its tent over the GeoJSON box at the same place on the Equal Earth plane."
+    }
+  },
+  "sources": {
+    "geojson": {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {
+              "property": 30
+            },
+            "geometry": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    -10,
+                    0
+                  ],
+                  [
+                    -10,
+                    10
+                  ],
+                  [
+                    10,
+                    10
+                  ],
+                  [
+                    10,
+                    0
+                  ],
+                  [
+                    -10,
+                    0
+                  ]
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "pitch": 40,
+  "zoom": 3,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "bearing": 0,
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "green"
+      }
+    },
+    {
+      "id": "box",
+      "type": "line",
+      "source": "geojson",
+      "paint": {
+        "line-color": "yellow",
+        "line-width": 3
+      }
+    }
+  ],
+  "center": [
+    0,
+    5
+  ]
+}

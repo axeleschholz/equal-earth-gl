@@ -138,6 +138,11 @@ export type CustomRenderMethodInput = {
      * For projection 3D features, use `projectTileFor3D` in the shader.
      *
      * If you just need a projection matrix, use `defaultProjectionData.mainMatrix`.
+     *
+     * In the `equal-earth` projection this is the data of the warp that takes mercator tiles onto the Equal Earth
+     * plane: with the prelude and define of `shaderData`, `projectTileFor3D(mercatorXY, meters)` places a mercator
+     * coordinate, 0..1, with an elevation in meters, as it does on the globe. `mainMatrix` alone takes positions on
+     * the Equal Earth plane, 0..1 across the world square, not mercator coordinates, to clip space.
      * A projection matrix is sufficient for simple custom layers that only support mercator projection.
      *
      * Under mercator projection, when these uniforms are used, the shader's `projectTile` function projects spherical mercator

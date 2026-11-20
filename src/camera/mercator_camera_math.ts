@@ -12,6 +12,7 @@ import {EXTENT} from '../data/extent.ts';
 import {cameraPointQueryGeometry} from './projected_camera.ts';
 import {createFrustum, type Frustum} from '../util/primitives/frustum.ts';
 import {bisect, sampleAt, isBelowTerrainSample, TERRAIN_OCCLUSION_MARGIN, type TerrainCoverageIndex, type TerrainSample} from '../render/terrain_coverage.ts';
+import {getWarpedProjectionData} from '../geo/projection/warped_projection_data.ts';
 
 import type {PointProjection} from '../symbol/projection.ts';
 import type {LngLat} from '../geo/lng_lat.ts';
@@ -650,7 +651,13 @@ export class MercatorCameraMath implements CameraMath {
         };
     }
 
+    /**
+     * The projection data a custom layer draws with. For a camera with a tile warp it is that of the warp for the
+     * world tile, so that the projection's shader prelude places mercator coordinates, 0..1, on the camera's plane,
+     * with elevation in meters, as it does on the globe.
+     */
     getProjectionDataForCustomLayer(projectedCamera: MercatorProjectedCamera, applyGlobeMatrix: boolean = true): CustomLayerProjectionData {
+        if (projectedCamera.tileWarp) return getWarpedProjectionData(projectedCamera, null, projectedCamera.tileWarp);
         const tileID = new OverscaledTileID(0, 0, 0, 0, 0);
         const rendererProjectionData = this.getProjectionData(projectedCamera, {overscaledTileID: tileID, applyGlobeMatrix});
         const tileMatrix = calculateTileMatrix(tileID, projectedCamera.worldSize);
