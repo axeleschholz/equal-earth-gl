@@ -1,0 +1,69 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "Buildings from mercator vector tiles stand upright on the footprints the same tiles draw, in a pitched and rotated view.",
+      "width": 512,
+      "height": 512
+    }
+  },
+  "center": [
+    13.418056,
+    52.499167
+  ],
+  "zoom": 15.7,
+  "pitch": 55,
+  "bearing": 30,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "sources": {
+    "tiles": {
+      "type": "vector",
+      "maxzoom": 14,
+      "tiles": [
+        "local://tiles/{z}-{x}-{y}.mvt"
+      ]
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "#f2f2f2"
+      }
+    },
+    {
+      "id": "road",
+      "type": "line",
+      "source": "tiles",
+      "source-layer": "road",
+      "paint": {
+        "line-color": "#bbb",
+        "line-width": 2
+      }
+    },
+    {
+      "id": "footprint",
+      "type": "fill",
+      "source": "tiles",
+      "source-layer": "building",
+      "paint": {
+        "fill-color": "#d7301f",
+        "fill-opacity": 0.5
+      }
+    },
+    {
+      "id": "building",
+      "type": "fill-extrusion",
+      "source": "tiles",
+      "source-layer": "building",
+      "paint": {
+        "fill-extrusion-color": "#7f9fbf",
+        "fill-extrusion-height": 30,
+        "fill-extrusion-opacity": 0.85
+      }
+    }
+  ]
+}

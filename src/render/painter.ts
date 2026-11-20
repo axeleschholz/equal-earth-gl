@@ -30,8 +30,6 @@ import {isColorReliefStyleLayer} from '../style/style_layer/color_relief_style_l
 import {isRasterStyleLayer} from '../style/style_layer/raster_style_layer.ts';
 import {isBackgroundStyleLayer} from '../style/style_layer/background_style_layer.ts';
 import {isCustomStyleLayer} from '../style/style_layer/custom_style_layer.ts';
-import {warnOnce} from '../util/util.ts';
-import {resolveTileGrid} from '../geo/projection/tile_warp.ts';
 
 import type {OverscaledTileID} from '../tile/tile_id.ts';
 import type {TileManager} from '../tile/tile_manager.ts';
@@ -438,7 +436,6 @@ export class Painter {
     renderLayer(painter: Painter, tileManager: TileManager, layer: StyleLayer, coords: OverscaledTileID[], frameRenderContext: FrameRenderContext): void {
         if (layer.isHidden(frameRenderContext.projectedCamera.zoom)) return;
         if (layer.type !== 'background' && layer.type !== 'custom' && !(coords || []).length) return;
-        if (!drawsOnWarpedTiles(layer, tileManager, frameRenderContext.worldCoordinateHelper)) return;
 
         const draw = this.drawFunctions;
         if (isSymbolStyleLayer(layer)) {
@@ -646,21 +643,4 @@ export class Painter {
         const {drawingBufferWidth, drawingBufferHeight} = this.context.gl;
         return this.width !== drawingBufferWidth || this.height !== drawingBufferHeight;
     }
-}
-
-/**
- * The layer types that are not drawn on tiles of the mercator grid where a projection warps those onto its plane:
- * placing and drawing them takes the warp on the CPU as well, which they do not use yet.
- */
-const LAYER_TYPES_NOT_WARPED = new Set(['fill-extrusion']);
-
-/**
- * Whether a layer is drawn: always, except for a layer of one of {@link LAYER_TYPES_NOT_WARPED} on a source of
- * mercator tiles on a plane those are warped onto, which is left out with one warning per type.
- */
-function drawsOnWarpedTiles(layer: StyleLayer, tileManager: TileManager | undefined, worldCoordinateHelper: WorldCoordinateHelper): boolean {
-    if (!worldCoordinateHelper.mercatorTileWarp || !LAYER_TYPES_NOT_WARPED.has(layer.type)) return true;
-    if (resolveTileGrid(tileManager?.getSource()?.tileGrid, worldCoordinateHelper) !== 'mercator') return true;
-    warnOnce(`${layer.type} layers on tile sources are not yet drawn in the ${worldCoordinateHelper.name} projection.`);
-    return false;
 }

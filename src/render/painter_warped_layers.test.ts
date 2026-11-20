@@ -15,7 +15,7 @@ const DRAW_NAMES = {
 
 type LayerType = keyof typeof DRAW_NAMES;
 
-describe('layers a projection does not draw on warped tiles yet', () => {
+describe('layers on warped tiles', () => {
     let painter: Painter;
     let warn: ReturnType<typeof vi.spyOn>;
     let drawn: string[];
@@ -38,27 +38,10 @@ describe('layers a projection does not draw on warped tiles yet', () => {
         painter.renderLayer(painter, tileManager, layer, [{} as any], frameRenderContext);
     }
 
-    test('are skipped on the equal-earth plane with one warning per type', () => {
-        const skipped: LayerType[] = ['fill-extrusion'];
-        for (const type of skipped) {
-            render(type, equalEarthWorldCoordinateHelper);
-            render(type, equalEarthWorldCoordinateHelper, undefined, `${type}-second-layer`);
-        }
-        expect(drawn).toEqual([]);
-        expect(warn).toHaveBeenCalledTimes(1);
-        expect(warn.mock.calls[0][0]).toContain('fill-extrusion layers on tile sources are not yet drawn in the equal-earth projection');
-    });
-
-    test('leave fill, line, raster, background, circle and heatmap layers drawn on the equal-earth plane', () => {
-        for (const type of ['fill', 'line', 'raster', 'background', 'circle', 'heatmap', 'symbol', 'hillshade', 'color-relief'] as LayerType[]) render(type, equalEarthWorldCoordinateHelper);
-        expect(drawn).toEqual(['fill', 'line', 'raster', 'background', 'circle', 'heatmap', 'symbol', 'hillshade', 'colorRelief']);
-        expect(warn).not.toHaveBeenCalled();
-    });
-
-    test('are drawn for a source whose tiles are cut in the plane\'s own grid', () => {
-        render('fill-extrusion', equalEarthWorldCoordinateHelper, 'plane');
-        render('hillshade', equalEarthWorldCoordinateHelper, 'plane');
-        expect(drawn).toEqual(['fillExtrusion', 'hillshade']);
+    test('every layer type is drawn on the equal-earth plane, without a warning', () => {
+        const types = Object.keys(DRAW_NAMES) as LayerType[];
+        for (const type of types) render(type, equalEarthWorldCoordinateHelper);
+        expect(drawn).toEqual(types.map(type => DRAW_NAMES[type]));
         expect(warn).not.toHaveBeenCalled();
     });
 
