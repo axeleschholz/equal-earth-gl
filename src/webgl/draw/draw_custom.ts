@@ -3,6 +3,7 @@ import {StencilMode} from '../stencil_mode.ts';
 import {OverscaledTileID} from '../../tile/tile_id.ts';
 import {drawTerrainHeightMap} from './draw_terrain.ts';
 import {getCameraMath} from '../../camera/camera_math_factory.ts';
+import {getWarpedProjectionData} from '../../geo/projection/warped_projection_data.ts';
 
 import type {Painter} from '../../render/painter.ts';
 import type {FrameRenderContext} from '../../render/frame_render_context.ts';
@@ -37,14 +38,18 @@ export function drawCustom(painter: Painter, tileManager: TileManager, layer: Cu
         },
         defaultProjectionData: projectionData,
         getProjectionData: (params: CustomLayerProjectionDataParams) => {
+            const overscaledTileID = new OverscaledTileID(
+                params.tileID.canonical.z,
+                params.tileID.wrap ?? 0,
+                params.tileID.canonical.z,
+                params.tileID.canonical.x,
+                params.tileID.canonical.y,
+            );
+            if (projectedCamera.projection === 'mercator' && projectedCamera.tileWarp) {
+                return getWarpedProjectionData(projectedCamera, overscaledTileID, projectedCamera.tileWarp);
+            }
             return getCameraMath(projectedCamera).getProjectionData(projectedCamera, {
-                overscaledTileID: new OverscaledTileID(
-                    params.tileID.canonical.z,
-                    params.tileID.wrap ?? 0,
-                    params.tileID.canonical.z,
-                    params.tileID.canonical.x,
-                    params.tileID.canonical.y,
-                ),
+                overscaledTileID,
                 aligned: params.aligned,
                 applyGlobeMatrix: params.applyGlobeMatrix,
                 applyTerrainMatrix: params.applyTerrainMatrix,

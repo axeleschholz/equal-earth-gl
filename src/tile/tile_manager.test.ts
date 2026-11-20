@@ -3064,4 +3064,24 @@ describe('TileManager.tilesIn on a plane that mercator tiles are warped onto', (
             expect(scale).toBeGreaterThan(flatScale / 8);
         }
     });
+
+    test('splits the line from the query to the camera too, which a query of 3D layers follows', async () => {
+        const {equalEarthWorldCoordinateHelper: helper} = await import('../geo/projection/equal_earth_world.ts');
+        const {projectedCamera} = createTestCamera({width: 512, height: 512, zoom: 2, center: [20, 30], pitch: 50}, {projection: 'mercator', worldCoordinateHelper: helper});
+        const tileManager = createTileManager();
+        tileManager._source.loadTile = async (tile) => {
+            tile.state = 'loaded';
+        };
+        const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
+        tileManager.onAdd(undefined);
+        await dataPromise;
+        tileManager.update(projectedCamera, helper);
+        const box = [new Point(254, 300), new Point(258, 300), new Point(258, 304), new Point(254, 304), new Point(254, 300)];
+        const flatQuery = getCameraMath(projectedCamera).getCameraQueryGeometry(projectedCamera, box);
+        const results = tileManager.tilesIn(box, 1, true, projectedCamera, helper);
+        expect(results.length).toBeGreaterThan(0);
+        for (const {cameraQueryGeometry} of results) {
+            expect(cameraQueryGeometry.length).toBeGreaterThan(flatQuery.length);
+        }
+    });
 });

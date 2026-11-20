@@ -23,6 +23,8 @@
 
     const BABYLON = window.BABYLON;
 
+    // This example multiplies mercator coordinates by the projection matrix, which fits a mercator map only, so it asks for one.
+    maplibregl.setDefaultProjection('mercator');
     const map = new maplibregl.Map({
         container: 'map',
         style: 'https://tiles.openfreemap.org/styles/bright',

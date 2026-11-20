@@ -532,6 +532,7 @@ export class Style extends Evented<MapEventType> {
         this._createLayers();
 
         this.light = new Light(this.stylesheet.light ?? {}, this._globalState);
+        this.map._forgetTerrainRequest?.();
         this._applyProjection(projectionObjects);
 
         this.sky = new Sky(this.stylesheet.sky, this._globalState);

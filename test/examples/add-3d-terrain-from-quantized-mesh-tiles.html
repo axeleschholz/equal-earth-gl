@@ -31,6 +31,8 @@ const dataset = await loadQuantizedMeshDataset(
 
 const {sourceSpec} = registerQuantizedMeshTerrain(maplibregl, {dataset, decode});
 
+// This example uses terrain, which the Equal Earth projection does not draw yet, so it asks for mercator.
+maplibregl.setDefaultProjection('mercator');
 const map = new maplibregl.Map({
     container: 'map',
     // A plain OpenStreetMap raster basemap, to show that ordinary 2D layers

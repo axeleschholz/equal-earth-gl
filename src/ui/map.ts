@@ -3097,12 +3097,22 @@ export class Map extends Evented<MapEventType> {
             return this;
         }
 
-        this._requestedTerrain = options;
         if (options && this._projectionLacksTerrain()) {
             warnOnce(`Terrain is not yet supported in the ${this.style.projection.name} projection. The map is drawn without it.`);
-            options = null;
+            this._applyTerrain(null);
+        } else {
+            this._applyTerrain(options ?? null);
         }
-        return this._applyTerrain(options);
+        this._requestedTerrain = options ?? null;
+        return this;
+    }
+
+    /**
+     * @internal
+     * Drops the terrain last asked for, which belonged to the style that is being replaced: the new style sets its own.
+     */
+    _forgetTerrainRequest(): void {
+        this._requestedTerrain = null;
     }
 
     /**

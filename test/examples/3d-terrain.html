@@ -20,6 +20,8 @@
 <script type="module">
     import * as maplibregl from '../../dist/maplibre-gl-dev.mjs';
 
+    // This example uses terrain, which the Equal Earth projection does not draw yet, so it asks for mercator.
+    maplibregl.setDefaultProjection('mercator');
     const map = new maplibregl.Map({
         container: 'map',
         zoom: 12,

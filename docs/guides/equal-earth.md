@@ -53,7 +53,7 @@ Terrain is not supported in `equal-earth` yet. `map.setTerrain()` and a style's 
 
 ## Custom layers
 
-A custom layer that projects with the shader prelude it is given works unchanged, as it does on the globe: with `shaderData.vertexShaderPrelude` and `shaderData.define` in its vertex shader and the uniforms of `defaultProjectionData`, `projectTileFor3D(mercatorXY, meters)` places a Mercator coordinate, 0 to 1, at an elevation in meters. Positions are computed in single precision, so a layer of building-sized detail jitters at high zoom, as on the globe.
+A custom layer that projects with the shader prelude it is given works unchanged, as it does on the globe: with `shaderData.vertexShaderPrelude` and `shaderData.define` in its vertex shader and the uniforms of `defaultProjectionData`, `projectTileFor3D(mercatorXY, meters)` places a Mercator coordinate, 0 to 1, at an elevation in meters. With `defaultProjectionData`, positions are computed in single precision against the whole world, so detail jitters from about zoom 14 and by several pixels at zoom 18. A layer that draws tile by tile avoids this: `args.getProjectionData({tileID})` gives the data of one tile, in which positions are tile coordinates and stay precise at any zoom.
 
 A custom layer written for Mercator alone, which multiplies Mercator coordinates by `modelViewProjectionMatrix` or `defaultProjectionData.mainMatrix`, draws in the wrong place: on this map those matrices take positions on the Equal Earth plane. Use the prelude instead.
 

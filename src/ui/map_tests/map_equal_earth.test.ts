@@ -184,6 +184,35 @@ describe('terrain on a map in equal-earth', () => {
         map.remove();
     });
 
+    test('reads back as upstream does on mercator: null once removed, unchanged when a request fails', async () => {
+        const map = createMap({style: demStyle('mercator')});
+        await map.once('style.load');
+        expect(map.getTerrain()).toBeNull();
+        map.setTerrain({source: 'dem'});
+        map.setTerrain(undefined);
+        expect(map.getTerrain()).toBeNull();
+        map.setTerrain({source: 'dem', exaggeration: 2});
+        expect(() => map.setTerrain({source: 'nope'})).toThrow('cannot load terrain');
+        expect(map.getTerrain()).toEqual({source: 'dem', exaggeration: 2});
+        expect(map.getStyle().terrain).toEqual({source: 'dem', exaggeration: 2});
+        map.remove();
+    });
+
+    test('does not bring back the terrain of the style before when a new style is set', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const map = createMap({style: {...demStyle('equal-earth'), terrain: {source: 'dem', exaggeration: 3}}});
+        await map.once('style.load');
+        const events: any[] = [];
+        map.on('terrain', (e: any) => events.push(e.terrain));
+        map.setStyle(demStyle('mercator'), {diff: false});
+        await map.once('style.load');
+        expect(events.filter(terrain => terrain !== null)).toEqual([]);
+        expect(map.terrain).toBeNull();
+        expect(map.getTerrain()).toBeNull();
+        warn.mockRestore();
+        map.remove();
+    });
+
     test('a style that carries terrain loads without it', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const map = createMap({style: {...demStyle('equal-earth'), terrain: {source: 'dem'}}});

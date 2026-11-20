@@ -102,4 +102,31 @@ describe('drawCustom', () => {
         expect(tileProjectionData.projectionTransition).toBe(0);
         expect(tileProjectionData.mainMatrix).toEqual(tileProjectionData.fallbackMatrix);
     });
+
+    test('gives a layer on a plane that mercator tiles are warped onto the warp\'s data, for the world and for a tile', async () => {
+        const {equalEarthWorldCoordinateHelper: helper} = await import('../../geo/projection/equal_earth_world.ts');
+        const {getWarpedProjectionData} = await import('../../geo/projection/warped_projection_data.ts');
+        const {shaders} = await import('../../shaders/shaders.ts');
+        const {projectedCamera} = createTestCamera({width: 500, height: 500, zoom: 3, center: [20, 30]}, {projection: 'mercator', worldCoordinateHelper: helper});
+        const mockPainter = new Painter(null);
+        mockPainter.context = {gl: {}, setCustomLayerDefaults: () => {}, setColorMode: () => {}, setStencilMode: () => {}, setDepthMode: () => {}, setDirty: () => {}, bindFramebuffer: {set: () => {}}} as any;
+        const data = {...createFrameRenderData(), projectionShaderVariant: {name: 'equal-earth', define: '#define PROJECTION_EQUAL_EARTH', prelude: shaders.projectionEqualEarth}};
+        const frameRenderContext = new FrameRenderContext({projectedCamera, worldCoordinateHelper: helper, terrain: null, data, context: mockPainter.context, programCache: null, currentPass: 'translucent', projection: null});
+        let args: CustomRenderMethodInput;
+        const layer = new CustomStyleLayer({id: 'custom-layer', type: 'custom', render(_gl, renderArgs) { args = renderArgs; }}, {});
+        drawCustom(mockPainter, new TileManager(null, null, null), layer, [], frameRenderContext);
+
+        expect(args.shaderData.variantName).toBe('equal-earth');
+        expect(args.shaderData.define).toBe('#define PROJECTION_EQUAL_EARTH');
+        const world = getWarpedProjectionData(projectedCamera as any, null, helper.mercatorTileWarp);
+        expect(Array.from(args.defaultProjectionData.mainMatrix)).toEqual(Array.from(world.mainMatrix));
+
+        const tileID = new OverscaledTileID(3, 0, 3, 4, 2);
+        const forTile = args.getProjectionData({tileID: {canonical: {z: 3, x: 4, y: 2}, wrap: 0}});
+        const expected = getWarpedProjectionData(projectedCamera as any, tileID, helper.mercatorTileWarp);
+        expect(forTile.projectionTransition).toBe(1);
+        expect(Array.from(forTile.mainMatrix)).toEqual(Array.from(expected.mainMatrix));
+        expect(Array.from(forTile.fallbackMatrix)).toEqual(Array.from(expected.fallbackMatrix));
+        expect(forTile.clippingPlane).toEqual(expected.clippingPlane);
+    });
 });

@@ -928,7 +928,7 @@ export class TileManager extends Evented<SourceEventType> {
         if (!projectedCamera) return tileResults;
         const allowWorldCopies = getCoveringTilesDetailsProvider(projectedCamera).allowWorldCopies();
 
-        const cameraPointQueryGeometry = has3DLayer ?
+        let cameraPointQueryGeometry = has3DLayer ?
             getCameraMath(projectedCamera).getCameraQueryGeometry(projectedCamera, pointQueryGeometry) :
             pointQueryGeometry;
 
@@ -940,6 +940,7 @@ export class TileManager extends Evented<SourceEventType> {
                 WORLD_SAMPLES.some(([lng, lat]) => polygonContainsPoint(pointQueryGeometry, cameraMath.locationToScreenPoint(projectedCamera, worldCoordinateHelper, new LngLat(lng, lat), this.terrain)));
             if (!reachesWorld) return tileResults;
             pointQueryGeometry = splitLongEdges(pointQueryGeometry, MAX_WARPED_QUERY_EDGE);
+            cameraPointQueryGeometry = has3DLayer ? splitLongEdges(cameraPointQueryGeometry, MAX_WARPED_QUERY_EDGE) : pointQueryGeometry;
             const toPlane = project;
             project = (point: Point) => {
                 const onPlane = toPlane(point);
