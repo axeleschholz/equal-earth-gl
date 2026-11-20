@@ -1,0 +1,66 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "At high pitch the sky is drawn above the horizon of the Equal Earth plane and the map below it, with fog toward the horizon.",
+      "width": 512,
+      "height": 512,
+      "maxPitch": 85
+    }
+  },
+  "center": [
+    13.418056,
+    52.499167
+  ],
+  "zoom": 15.7,
+  "pitch": 80,
+  "bearing": 20,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "sky": {
+    "sky-color": "#199EF3",
+    "horizon-color": "#daeff0",
+    "sky-horizon-blend": 1,
+    "fog-ground-blend": 0.6,
+    "fog-color": "#ffffff"
+  },
+  "sources": {
+    "tiles": {
+      "type": "vector",
+      "maxzoom": 14,
+      "tiles": [
+        "local://tiles/{z}-{x}-{y}.mvt"
+      ]
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "#e8e4d8"
+      }
+    },
+    {
+      "id": "road",
+      "type": "line",
+      "source": "tiles",
+      "source-layer": "road",
+      "paint": {
+        "line-color": "#888",
+        "line-width": 3
+      }
+    },
+    {
+      "id": "building",
+      "type": "fill-extrusion",
+      "source": "tiles",
+      "source-layer": "building",
+      "paint": {
+        "fill-extrusion-color": "#7f9fbf",
+        "fill-extrusion-height": 25
+      }
+    }
+  ]
+}
