@@ -1,7 +1,7 @@
 {
   "name": "equal-earth-gl",
   "description": "A fork of MapLibre GL JS that draws maps in the Equal Earth projection",
-  "version": "6.18.0-ee.2",
+  "version": "6.18.0-ee.3",
   "module": "dist/maplibre-gl.mjs",
   "style": "dist/maplibre-gl.css",
   "license": "BSD-3-Clause",

@@ -36,18 +36,26 @@ Web Mercator tiles hold no data beyond 85.051° of latitude. The strip from ther
 
 ## What is drawn
 
-This is stage 2 of 4: every 2D layer type is drawn, from tile sources and from GeoJSON, so an ordinary basemap style renders complete, with its labels.
+This is stage 3 of 4: every layer type is drawn, from tile sources and from GeoJSON, so an ordinary basemap style renders complete, with its labels and its 3D buildings.
 
 | | From tile sources | From GeoJSON sources |
 |---|---|---|
 | `background`, `fill`, `line`, `raster` | Yes | Yes |
 | `symbol`, `circle`, `heatmap` | Yes | Yes |
 | `hillshade`, `color-relief` | Yes | Does not apply |
-| `fill-extrusion` | Not yet | Untested |
+| `fill-extrusion` | Yes | Yes |
 
-Image, video and canvas sources are drawn too: their corners are placed in Web Mercator and the image is warped with the tiles. `queryRenderedFeatures` and `querySourceFeatures` work for every source.
+Image, video and canvas sources are drawn too: their corners are placed in Web Mercator and the image is warped with the tiles. `queryRenderedFeatures` and `querySourceFeatures` work for every source. The sky and fog are drawn as on any flat map.
 
-A `fill-extrusion` layer on a tile source is left out, with one console warning. The rest of the style is drawn. Terrain, the sky and custom layers are not covered yet.
+## Terrain
+
+Terrain is not supported in `equal-earth` yet. `map.setTerrain()` and a style's `terrain` are kept, but the map is drawn without terrain, with one console warning. `map.getTerrain()` returns what was set. When the map moves to a projection that draws terrain, with `setProjection`, the terrain comes on; when it moves back, it goes off.
+
+## Custom layers
+
+A custom layer that projects with the shader prelude it is given works unchanged, as it does on the globe: with `shaderData.vertexShaderPrelude` and `shaderData.define` in its vertex shader and the uniforms of `defaultProjectionData`, `projectTileFor3D(mercatorXY, meters)` places a Mercator coordinate, 0 to 1, at an elevation in meters. Positions are computed in single precision, so a layer of building-sized detail jitters at high zoom, as on the globe.
+
+A custom layer written for Mercator alone, which multiplies Mercator coordinates by `modelViewProjectionMatrix` or `defaultProjectionData.mainMatrix`, draws in the wrong place: on this map those matrices take positions on the Equal Earth plane. Use the prelude instead.
 
 ## Differences on tile sources
 

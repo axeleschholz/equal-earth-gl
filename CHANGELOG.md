@@ -2,6 +2,19 @@
 ### ✨ Features and improvements
 - _...Add new stuff here..._
 
+## 6.18.0-ee.3
+
+### ✨ Features and improvements
+
+- Draw `fill-extrusion` layers from Web Mercator tile sources in `equal-earth`, so basemaps with 3D buildings render complete
+- Give custom layers the projection data of the tile warp in `equal-earth`, so a layer that projects with the shader prelude, as for the globe, works unchanged, with elevation in meters
+- Keep terrain off in `equal-earth`, with a console warning, instead of drawing it wrongly; `getTerrain()` returns the terrain that was set, and it comes on when the map moves to a projection that draws terrain
+
+### Known limits
+
+- Terrain is not supported in `equal-earth` yet
+- A custom layer that multiplies Mercator coordinates by `modelViewProjectionMatrix` draws in the wrong place in `equal-earth`; use the shader prelude
+
 ## 6.18.0-ee.2
 
 Every 2D layer type and feature query now works on tile sources in `equal-earth`, so an unmodified basemap style renders complete, with labels.
