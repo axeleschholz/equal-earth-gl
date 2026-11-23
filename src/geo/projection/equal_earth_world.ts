@@ -31,6 +31,7 @@ export class EqualEarthWorldCoordinateHelper implements WorldCoordinateHelper {
     /** The world is a single bounded outline: no world copies and no wrapping across the antimeridian. */
     readonly wraps = false;
     readonly sourceTileGrid: TileGrid = 'mercator';
+    readonly tileGridName: string | undefined = 'equal-earth';
     readonly tileMatrixSet: TileMatrixSet = equalEarthTileMatrixSet;
     readonly mercatorTileWarp: TileWarp = equalEarthTileWarp;
     readonly bendsMercatorLines = true;

@@ -54,7 +54,7 @@ export class RasterDEMTileSource extends RasterTileSource implements Source {
     }
 
     override async loadTile(tile: Tile): Promise<void> {
-        const url = tile.tileID.canonical.url(this.tiles, this.map.getPixelRatio(), this.scheme, this.map.style.projection.worldCoordinateHelper.tileMatrixSet);
+        const url = tile.tileID.canonical.url(this.tiles, this.map.getPixelRatio(), this.scheme, this._getTileMatrixSet());
         tile.neighboringTiles = this._getNeighboringTiles(tile.tileID);
         tile.abortController = new AbortController();
         try {

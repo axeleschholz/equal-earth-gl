@@ -8,9 +8,13 @@ import {TileBounds} from '../tile/tile_bounds.ts';
 import {Texture} from '../webgl/texture.ts';
 import {RGBAImage} from '../util/image.ts';
 import {isAbortError} from '../util/abort_error.ts';
-import {featureGeometryHelper} from '../geo/projection/tile_warp.ts';
+import {resolveSourceTileGrid, sourceGridHasTile, sourceGridHelper, type TileGridSourceOption} from './source_tile_grid.ts';
+import {mercatorWorldCoordinateHelper} from '../geo/mercator_coordinate.ts';
 
 import type {Source} from './source.ts';
+import type {TileGrid} from '../geo/projection/tile_warp.ts';
+import type {WorldCoordinateHelper} from '../geo/world_types.ts';
+import type {TileMatrixSet} from '../geo/projection/tile_matrix_set.ts';
 import type {OverscaledTileID} from '../tile/tile_id.ts';
 import type {Map} from '../ui/map.ts';
 import type {Dispatcher} from '../util/dispatcher.ts';
@@ -62,13 +66,15 @@ export class RasterTileSource extends Evented<SourceEventType> implements Source
 
     bounds: [number, number, number, number];
     tileBounds: TileBounds;
+    /** The world mapping of the tiles' grid, see `sourceGridHelper`, as of the plane the source last looked at. */
+    _gridHelper: WorldCoordinateHelper | null | undefined;
     roundZoom: boolean;
     dispatcher: Dispatcher;
     map: Map;
     tiles: string[];
 
     _loaded: boolean;
-    _options: RasterSourceSpecification | RasterDEMSourceSpecification;
+    _options: (RasterSourceSpecification | RasterDEMSourceSpecification) & TileGridSourceOption;
     _premultiplyAlpha: boolean;
     _tileJSONRequest: AbortController;
 
@@ -101,7 +107,7 @@ export class RasterTileSource extends Evented<SourceEventType> implements Source
             this._loaded = true;
             if (tileJSON) {
                 extend(this, tileJSON);
-                if (tileJSON.bounds) this.tileBounds = new TileBounds(tileJSON.bounds, this.minzoom, this.maxzoom, featureGeometryHelper(undefined, this.map.style.projection.worldCoordinateHelper));
+                if (this.bounds || this._options.tileGrid !== undefined) this._updateTileBounds();
 
                 // `content` is included here to prevent a race condition where `Style._updateSources` is called
                 // before the TileJSON arrives. this makes sure the tiles needed are loaded once TileJSON arrives
@@ -175,7 +181,7 @@ export class RasterTileSource extends Evented<SourceEventType> implements Source
         return this;
     }
 
-    serialize(): RasterSourceSpecification | RasterDEMSourceSpecification {
+    serialize(): (RasterSourceSpecification | RasterDEMSourceSpecification) & TileGridSourceOption {
         return extend({}, this._options);
     }
 
@@ -199,12 +205,45 @@ export class RasterTileSource extends Evented<SourceEventType> implements Source
         return this;
     }
 
+    /**
+     * The grid the tiles are drawn in on the map's plane when the `tileGrid` option makes it another than the
+     * plane's sources are taken to be cut in.
+     */
+    get tileGrid(): TileGrid | undefined {
+        if (this._options.tileGrid === undefined || !this.map) return undefined;
+        return resolveSourceTileGrid(this._options.tileGrid, this.map.style.projection.worldCoordinateHelper) ?? undefined;
+    }
+
+    /**
+     * The tiles are of use on another plane as long as their grid is drawn there the same way, which mercator
+     * tiles are in every built-in projection. Tiles of a plane's own grid are not, so they are dropped. A source
+     * that has neither bounds nor a `tileGrid` holds nothing that depends on the plane.
+     */
+    onProjectionChange(): boolean {
+        const previous = this._gridHelper;
+        if (previous === undefined) return false;
+        this._updateTileBounds();
+        return previous !== this._gridHelper;
+    }
+
+    /** Takes the world mapping of the tiles' grid on the map's plane, and expresses the source's bounds in it. */
+    _updateTileBounds(): void {
+        this._gridHelper = sourceGridHelper(this._options.tileGrid, this.map.style.projection.worldCoordinateHelper);
+        if (this.bounds && this._gridHelper) this.tileBounds = new TileBounds(this.bounds, this.minzoom, this.maxzoom, this._gridHelper);
+    }
+
+    /** The tile matrix set of the tiles' grid, which the `{bbox}` of a tile URL is expressed in. */
+    _getTileMatrixSet(): TileMatrixSet {
+        return (sourceGridHelper(this._options.tileGrid, this.map.style.projection.worldCoordinateHelper) ?? mercatorWorldCoordinateHelper).tileMatrixSet;
+    }
+
     hasTile(tileID: OverscaledTileID): boolean {
+        if (this._options.tileGrid !== undefined && !sourceGridHasTile(this._options.tileGrid, this.map.style.projection.worldCoordinateHelper, tileID.canonical)) return false;
         return !this.tileBounds || this.tileBounds.contains(tileID.canonical);
     }
 
     async loadTile(tile: Tile): Promise<void> {
-        const url = tile.tileID.canonical.url(this.tiles, this.map.getPixelRatio(), this.scheme, this.map.style.projection.worldCoordinateHelper.tileMatrixSet);
+        const url = tile.tileID.canonical.url(this.tiles, this.map.getPixelRatio(), this.scheme, this._getTileMatrixSet());
         const premultiply = this._premultiplyAlpha;
         const imageBitmapOptions = premultiply ? undefined : {premultiplyAlpha: 'none'} as const;
         tile.abortController = new AbortController();

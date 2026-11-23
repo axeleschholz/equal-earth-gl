@@ -54,6 +54,11 @@ export interface WorldCoordinateHelper {
      */
     sourceTileGrid: TileGrid;
     /**
+     * The name a source's `tileGrid` option gives this plane's own quad grid, on a plane that tile sets are cut
+     * for: `mercator`, and `equal-earth` for the Equal Earth plane with its central meridian at 0.
+     */
+    tileGridName?: string;
+    /**
      * The part of the 0..1 world square that the world occupies, as `[minX, minY, maxX, maxY]`: the whole square for
      * mercator and a registered CRS, a band across its middle for a world projection that is wider than high.
      */

@@ -40,6 +40,7 @@ import {
 import {getDefaultProjection} from '../geo/projection/default_projection.ts';
 import {createProjectionFromName} from '../geo/projection/projection_factory.ts';
 
+import type {TileGridSourceOption} from '../source/source_tile_grid.ts';
 import type {Source} from '../source/source.ts';
 import type {GeoJSONSource} from '../source/geojson_source.ts';
 import type {StyleLayer} from './style_layer.ts';
@@ -1085,7 +1086,7 @@ export class Style extends Evented<MapEventType> {
         return this.imageManager.listImages();
     }
 
-    addSource(id: string, source: SourceSpecification | CanvasSourceSpecification, options: StyleSetterOptions = {}): void {
+    addSource(id: string, source: (SourceSpecification & TileGridSourceOption) | CanvasSourceSpecification, options: StyleSetterOptions = {}): void {
         this._checkLoaded();
 
         if (this.tileManagers[id] !== undefined) {

@@ -45,6 +45,7 @@ import {isStyleImageWebGLData} from '../style/style_image.ts';
 import {hasOwnPlane} from '../geo/projection/projection_factory.ts';
 import {getDefaultProjection} from '../geo/projection/default_projection.ts';
 
+import type {TileGridSourceOption} from '../source/source_tile_grid.ts';
 import type {PaddingOptions} from '../geo/edge_insets.ts';
 import type {Source} from '../source/source.ts';
 import type {StyleLayer} from '../style/style_layer.ts';
@@ -3048,7 +3049,7 @@ export class Map extends Evented<MapEventType> {
      * ```
      * @see GeoJSON source: [Add live realtime data](https://maplibre.org/maplibre-gl-js/docs/examples/add-live-realtime-data/)
      */
-    addSource(id: string, source: SourceSpecification | CanvasSourceSpecification): this {
+    addSource(id: string, source: (SourceSpecification & TileGridSourceOption) | CanvasSourceSpecification): this {
         this._lazyInitEmptyStyle();
         this.style.addSource(id, source);
         return this._update(true);

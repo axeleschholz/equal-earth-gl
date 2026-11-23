@@ -1,8 +1,9 @@
-import {latest as styleSpec, validateStyleMin} from '@maplibre/maplibre-gl-style-spec';
+import {latest as styleSpec, validateStyleMin, ValidationError} from '@maplibre/maplibre-gl-style-spec';
+import {SOURCE_TILE_GRIDS} from '../source/source_tile_grid.ts';
 import {ErrorEvent} from '../util/evented.ts';
-import {warnOnce} from '../util/util.ts';
+import {extend, warnOnce} from '../util/util.ts';
 
-import type {StyleSpecification, ValidationError} from '@maplibre/maplibre-gl-style-spec';
+import type {StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {Evented} from '../util/evented.ts';
 import type {StyleSetterOptions} from './style.ts';
 
@@ -26,7 +27,92 @@ type ValidateStyle = {
     (b: any, a?: any | null): readonly ValidationError[];
 };
 
-export const validateStyle = (validateStyleMin as unknown as ValidateStyle);
+const specValidateStyle = (validateStyleMin as unknown as ValidateStyle);
+
+/** The source types that take the `tileGrid` option, see `TileGridSourceOption`. */
+const TILE_GRID_SOURCE_TYPES: ReadonlySet<unknown> = new Set(['vector', 'raster', 'raster-dem']);
+
+/** The projection's central meridian, see `EqualEarthProjectionOptions`. */
+const CENTRAL_MERIDIAN = 'central-meridian';
+
+function hasTileGrid(source: any): boolean {
+    return source && typeof source === 'object' && source.tileGrid !== undefined && TILE_GRID_SOURCE_TYPES.has(source.type);
+}
+
+function withoutKey<T extends object>(object: T, key: string): T {
+    const copy = {...object};
+    delete copy[key];
+    return copy;
+}
+
+function validateTileGrid(key: string, source: any): ValidationError[] {
+    if (!hasTileGrid(source) || SOURCE_TILE_GRIDS.includes(source.tileGrid)) return [];
+    return [new ValidationError(`${key}.tileGrid`, source.tileGrid, `expected one of [${SOURCE_TILE_GRIDS.join(', ')}], ${JSON.stringify(source.tileGrid)} found`)];
+}
+
+function validateCentralMeridian(projection: any): ValidationError[] {
+    const value = projection?.[CENTRAL_MERIDIAN];
+    if (value === undefined || (typeof value === 'number' && value >= -180 && value <= 180)) return [];
+    return [new ValidationError(`projection.${CENTRAL_MERIDIAN}`, value, `a number from -180 to 180 expected, ${JSON.stringify(value)} found`)];
+}
+
+/**
+ * A style as the specification's validator is given it: without the keys this library takes beyond the
+ * specification, which that validator would report as unknown. They are a tile source's `tileGrid` and the
+ * projection's `central-meridian`, which {@link validateStyle} checks itself.
+ */
+function withoutExtensions(style: any): any {
+    if (!style || typeof style !== 'object') return style;
+    let stripped = style;
+    const sources = style.sources;
+    if (sources && typeof sources === 'object' && Object.values(sources).some(hasTileGrid)) {
+        const strippedSources = {};
+        for (const id in sources) strippedSources[id] = hasTileGrid(sources[id]) ? withoutKey(sources[id], 'tileGrid') : sources[id];
+        stripped = {...stripped, sources: strippedSources};
+    }
+    if (style.projection && typeof style.projection === 'object' && CENTRAL_MERIDIAN in style.projection) {
+        stripped = {...stripped, projection: withoutKey(style.projection, CENTRAL_MERIDIAN)};
+    }
+    return stripped;
+}
+
+function validateExtensions(style: any): ValidationError[] {
+    if (!style || typeof style !== 'object') return [];
+    const errors = validateCentralMeridian(style.projection);
+    const sources = style.sources;
+    if (!sources || typeof sources !== 'object') return errors;
+    for (const id in sources) errors.push(...validateTileGrid(`sources.${id}`, sources[id]));
+    return errors;
+}
+
+function validateWholeStyle(style: any, spec?: any): readonly ValidationError[] {
+    return [...specValidateStyle(withoutExtensions(style), spec), ...validateExtensions(style)];
+}
+
+function validateSource(options: any): readonly ValidationError[] {
+    if (!hasTileGrid(options.value)) return specValidateStyle.source(options);
+    return [
+        ...specValidateStyle.source({...options, value: withoutKey(options.value, 'tileGrid')}),
+        ...validateTileGrid(options.key, options.value),
+    ];
+}
+
+/**
+ * The style specification's validator, which also knows the keys this library takes beyond the specification:
+ * the `tileGrid` of a tile source and the `central-meridian` of the projection.
+ */
+export const validateStyle: ValidateStyle = extend(validateWholeStyle, {
+    source: validateSource,
+    sprite: specValidateStyle.sprite,
+    glyphs: specValidateStyle.glyphs,
+    layer: specValidateStyle.layer,
+    light: specValidateStyle.light,
+    sky: specValidateStyle.sky,
+    terrain: specValidateStyle.terrain,
+    filter: specValidateStyle.filter,
+    paintProperty: specValidateStyle.paintProperty,
+    layoutProperty: specValidateStyle.layoutProperty,
+});
 
 /**
  * The source types the spec has a schema for, and therefore the only ones it can judge. Taken from

@@ -1,6 +1,7 @@
 import {describe, test, expect, vi, afterEach} from 'vitest';
 import {validateAndEmit, validateStyle, validateStyleAndEmit} from './validate_style.ts';
 import {Evented, type ErrorEventType} from '../util/evented.ts';
+import {latest as styleSpec} from '@maplibre/maplibre-gl-style-spec';
 
 import type {StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
 
@@ -106,5 +107,46 @@ describe('validateStyleAndEmit', () => {
 
         expect(hasErrors).toBe(true);
         expect(fired).toEqual([expect.stringContaining('layers[0]')]);
+    });
+});
+
+describe('validateStyle', () => {
+    test('accepts the tileGrid option on tile sources, in a style and on a source alone', () => {
+        const style = {version: 8, sources: {
+            a: {type: 'vector', tiles: ['http://example.com/{z}/{x}/{y}.pbf'], tileGrid: 'equal-earth'},
+            b: {type: 'raster', tiles: ['http://example.com/{z}/{x}/{y}.png'], tileGrid: 'mercator'},
+            c: {type: 'raster-dem', tiles: ['http://example.com/{z}/{x}/{y}.png'], tileGrid: 'equal-earth'},
+        }, layers: []} as any;
+
+        expect(validateStyle(style)).toEqual([]);
+        expect(validateStyle.source({key: 'sources.a', value: style.sources.a, styleSpec, style})).toEqual([]);
+    });
+
+    test('reports a tileGrid that names no grid', () => {
+        const source = {type: 'vector', tiles: ['http://example.com/{z}/{x}/{y}.pbf'], tileGrid: 'foo'};
+
+        const alone = validateStyle.source({key: 'sources.a', value: source, styleSpec, style: {}});
+        const inStyle = validateStyle({version: 8, sources: {a: source}, layers: []});
+
+        expect(alone.map(error => error.message)).toEqual(['sources.a.tileGrid: expected one of [mercator, equal-earth], "foo" found']);
+        expect(inStyle.map(error => error.message)).toEqual(['sources.a.tileGrid: expected one of [mercator, equal-earth], "foo" found']);
+    });
+
+    test('still reports tileGrid as unknown on a source that has no tiles', () => {
+        const errors = validateStyle({version: 8, sources: {a: {type: 'geojson', data: {type: 'FeatureCollection', features: []}, tileGrid: 'equal-earth'}}, layers: []});
+
+        expect(errors.map(error => error.message)).toEqual(['sources.a: unknown property "tileGrid"']);
+    });
+
+    test('accepts a central meridian on the projection', () => {
+        expect(validateStyle({version: 8, sources: {}, layers: [], projection: {'type': 'equal-earth', 'central-meridian': 150}})).toEqual([]);
+    });
+
+    test('reports a central meridian that is no longitude', () => {
+        const tooFar = validateStyle({version: 8, sources: {}, layers: [], projection: {'type': 'equal-earth', 'central-meridian': 200}});
+        const noNumber = validateStyle({version: 8, sources: {}, layers: [], projection: {'type': 'equal-earth', 'central-meridian': 'east'}});
+
+        expect(tooFar.map(error => error.message)).toEqual(['projection.central-meridian: a number from -180 to 180 expected, 200 found']);
+        expect(noNumber.map(error => error.message)).toEqual(['projection.central-meridian: a number from -180 to 180 expected, "east" found']);
     });
 });

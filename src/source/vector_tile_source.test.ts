@@ -13,6 +13,7 @@ import fixturesSource from '../../test/unit/assets/source.json' with {type: 'jso
 import {getMockDispatcher, getWrapDispatcher, sleep, waitForEvent, waitForMetadataEvent} from '../util/test/util.ts';
 import {type ActorMessage, MessageType} from '../util/actor_messages.ts';
 import {EqualEarthProjection} from '../geo/projection/equal_earth_projection.ts';
+import {SubdivisionGranularitySetting} from '../render/subdivision_granularity_settings.ts';
 
 import type {Map} from '../ui/map.ts';
 import type {WorkerTileParameters} from './worker_source.ts';
@@ -38,6 +39,25 @@ function createSource(options, transformCallback?, clearTiles = () => {}) {
     source.on('error', () => { }); // to prevent console log of errors
 
     return source;
+}
+
+/**
+ * A source with the given options on a map in `projection`, whose worker answers every tile with an empty result.
+ * `sendAsync` is the worker's inbox.
+ */
+function createSourceInProjection(projection: {worldCoordinateHelper: unknown}, options: object) {
+    const sendAsync = vi.fn().mockResolvedValue({});
+    const source = new VectorTileSource('id', options as any, getWrapDispatcher()({sendAsync}), undefined);
+    const map = {
+        transform: {showCollisionBoxes: false},
+        _getMapId: () => 1,
+        _requestManager: new RequestManager(),
+        style: {tileManagers: {id: {clearTiles: () => {}}}, projection},
+        getGlobalState: () => ({}),
+        getPixelRatio() { return 1; },
+    };
+    source.onAdd(map as any as Map);
+    return {source, sendAsync, map};
 }
 
 /**
@@ -475,6 +495,54 @@ describe('VectorTileSource', () => {
         for (const [z, x, y] of [[3, 4, 1], [3, 4, 0], [3, 0, 7], [0, 0, 0], [4, 8, 4]]) {
             expect(source.hasTile(new OverscaledTileID(z, 0, z, x, y)), `${z}/${x}/${y}`).toBeTruthy();
         }
+    });
+
+    test('serves tiles of the Equal Earth grid on the Equal Earth plane as tiles of the plane', async () => {
+        const {source, sendAsync} = createSourceInProjection(new EqualEarthProjection(), {type: 'vector', minzoom: 0, maxzoom: 4, tiles: ['http://example.com/{z}/{x}/{y}.pbf?bbox={bbox}'], tileGrid: 'equal-earth'});
+        await waitForMetadataEvent(source);
+
+        expect(source.tileGrid).toBe('plane');
+        expect(source.serialize()).toMatchObject({tileGrid: 'equal-earth'});
+        expect(source.hasTile(new OverscaledTileID(2, 0, 2, 1, 1))).toBe(true);
+        expect(source.hasTile(new OverscaledTileID(2, 0, 2, 1, 0))).toBe(false);
+
+        await source.loadTile({loadVectorData() {}, tileID: new OverscaledTileID(1, 0, 1, 1, 0)} as any as Tile);
+        const params: WorkerTileParameters = sendAsync.mock.lastCall[0].data;
+        expect(params.request.url).toBe('http://example.com/1/1/0.pbf?bbox=0,0,17243959.062216945,17243959.062216945');
+        expect(params.subdivisionGranularity).toBe(SubdivisionGranularitySetting.noSubdivision);
+    });
+
+    test('puts mercator meters in the bbox of a mercator tile on the Equal Earth plane', async () => {
+        const {source, sendAsync} = createSourceInProjection(new EqualEarthProjection(), {type: 'vector', minzoom: 0, maxzoom: 4, tiles: ['http://example.com/{z}/{x}/{y}.pbf?bbox={bbox}']});
+        await waitForMetadataEvent(source);
+
+        await source.loadTile({loadVectorData() {}, tileID: new OverscaledTileID(1, 0, 1, 1, 0)} as any as Tile);
+
+        const params: WorkerTileParameters = sendAsync.mock.lastCall[0].data;
+        expect(params.request.url).toBe('http://example.com/1/1/0.pbf?bbox=0,0,20037508.342789244,20037508.342789244');
+        expect(source.tileGrid).toBeUndefined();
+    });
+
+    test('has no tiles of the Equal Earth grid on a mercator map', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const {source} = createSourceInProjection(new MercatorProjection(), {type: 'vector', minzoom: 0, maxzoom: 4, tiles: ['http://example.com/{z}/{x}/{y}.pbf'], tileGrid: 'equal-earth'});
+        await waitForMetadataEvent(source);
+
+        expect(source.hasTile(new OverscaledTileID(0, 0, 0, 0, 0))).toBe(false);
+        expect(source.tileGrid).toBeUndefined();
+    });
+
+    test('drops its tiles when a projection change changes the grid they are drawn in, and only then', async () => {
+        const {source, map} = createSourceInProjection(new EqualEarthProjection(), {type: 'vector', minzoom: 0, maxzoom: 4, tiles: ['http://example.com/{z}/{x}/{y}.pbf'], tileGrid: 'equal-earth', bounds: [0, 45, 45, 80]});
+        const mercatorSource = createSourceInProjection(new EqualEarthProjection(), {type: 'vector', minzoom: 0, maxzoom: 4, tiles: ['http://example.com/{z}/{x}/{y}.pbf']});
+        await Promise.all([waitForMetadataEvent(source), waitForMetadataEvent(mercatorSource.source)]);
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        map.style.projection = new MercatorProjection();
+        mercatorSource.map.style.projection = new MercatorProjection();
+
+        expect(source.onProjectionChange()).toBe(true);
+        expect(mercatorSource.source.onProjectionChange()).toBe(false);
     });
 
     test('builds tile bounds with the map projection', async () => {

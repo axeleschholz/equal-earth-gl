@@ -72,6 +72,7 @@ import type {PositionAnchor} from './ui/anchor.ts';
 import type {CustomLayerProjectionData, ProjectionData, ProjectionDataParams, ProjectionMatrix, RendererProjectionData} from './geo/projection/projection_data.ts';
 import type {CRS} from './geo/projection/crs.ts';
 import type {TileMatrixSet} from './geo/projection/tile_matrix_set.ts';
+import type {SourceTileGrid, TileGridSourceOption} from './source/source_tile_grid.ts';
 import type {WorkerTileResult} from './source/worker_source.ts';
 import type {Actor, IActor, MessageHandler} from './util/actor.ts';
 import type {Bucket} from './data/bucket.ts';
@@ -369,6 +370,8 @@ export {
     type RendererProjectionData,
     type CRS,
     type TileMatrixSet,
+    type SourceTileGrid,
+    type TileGridSourceOption,
     type GeoJSONFeatureId,
     type GeoJSONFeatureDiff,
     type TextFit,
