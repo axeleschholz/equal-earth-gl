@@ -42,16 +42,13 @@ describe('getWarpedProjectionData', () => {
         expect(data.tileMercatorCoords).toEqual([0.75, 0.25, 1 / 4 / EXTENT, 1 / 4 / EXTENT]);
     });
 
-    test('clips fragments past the edge of the world in the columns beside it, and line fragments past the mercator square in the top and bottom rows', () => {
+    test('clips fragments past the edge of the world in every tile, and line fragments past the mercator square in the top and bottom rows', () => {
         const camera = cameraAt(0, 0, 3);
         const clip = (x: number, y: number, z = 3) => getWarpedProjectionData(camera, new OverscaledTileID(z, 0, z, x, y), warp).clipAntimeridian;
-        expect(clip(4, 2)).toBe(0);
+        expect(clip(4, 2)).toBe(1);
         expect(clip(0, 2)).toBe(1);
-        expect(clip(7, 2)).toBe(1);
-        expect(clip(4, 0)).toBe(2);
-        expect(clip(4, 7)).toBe(4);
-        expect(clip(0, 0)).toBe(3);
-        expect(clip(7, 7)).toBe(5);
+        expect(clip(4, 0)).toBe(3);
+        expect(clip(4, 7)).toBe(5);
         expect(clip(0, 0, 0)).toBe(7);
     });
 

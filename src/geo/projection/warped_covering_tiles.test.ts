@@ -1,6 +1,7 @@
 import {describe, expect, test} from 'vitest';
 import Point from '@mapbox/point-geometry';
 import {coveringTiles} from './covering_tiles.ts';
+import {tileLiesInWorld} from './tile_warp.ts';
 import {equalEarthWorldCoordinateHelper as helper, getEqualEarthWorldCoordinateHelper} from './equal_earth_world.ts';
 import {equalEarthTileWarp} from './equal_earth_tile_warp.ts';
 import {mercatorWorldCoordinateHelper, mercatorYfromLat, mercatorXfromLng} from '../mercator_coordinate.ts';
@@ -192,7 +193,7 @@ describe('covering mercator tiles on a re-centred equal-earth plane', () => {
 
         expect(tiles.length).toBeGreaterThan(0);
         for (const tile of tiles) {
-            expect(warp.window({...tile.canonical, wrap: tile.wrap}), tile.toString()).not.toBeNull();
+            expect(tileLiesInWorld(warp.window({...tile.canonical, wrap: tile.wrap})), tile.toString()).toBe(true);
         }
     });
 });

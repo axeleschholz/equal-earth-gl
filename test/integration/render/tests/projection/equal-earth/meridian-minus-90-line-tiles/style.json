@@ -1,0 +1,47 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "Lines from a mercator vector tile on a world centered on 90 degrees west end at the edges of the world, at 90 degrees east, without a stroke along them.",
+      "width": 512,
+      "height": 256
+    }
+  },
+  "center": [
+    -90,
+    0
+  ],
+  "zoom": 0,
+  "projection": {
+    "type": "equal-earth",
+    "central-meridian": -90
+  },
+  "sources": {
+    "water": {
+      "type": "vector",
+      "maxzoom": 0,
+      "tiles": [
+        "local://tiles/{z}-{x}-{y}.mvt"
+      ]
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "#eeeeee"
+      }
+    },
+    {
+      "id": "coast",
+      "type": "line",
+      "source": "water",
+      "source-layer": "water",
+      "paint": {
+        "line-color": "#d7301f",
+        "line-width": 3
+      }
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "Circles from a mercator vector tile used as the world tile, on a world centered on 150 degrees east: one whose center is past an edge of the world is drawn at the other end only.",
+      "width": 512,
+      "height": 256
+    }
+  },
+  "center": [
+    150,
+    0
+  ],
+  "zoom": 0,
+  "projection": {
+    "type": "equal-earth",
+    "central-meridian": 150
+  },
+  "sources": {
+    "tiles": {
+      "type": "vector",
+      "maxzoom": 14,
+      "tiles": [
+        "local://tiles/14-8802-5374.mvt"
+      ]
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "#f2f2f2"
+      }
+    },
+    {
+      "id": "road",
+      "type": "line",
+      "source": "tiles",
+      "source-layer": "road",
+      "paint": {
+        "line-color": "#999",
+        "line-width": 1
+      }
+    },
+    {
+      "id": "poi",
+      "type": "circle",
+      "source": "tiles",
+      "source-layer": "poi_label",
+      "paint": {
+        "circle-radius": 6,
+        "circle-color": "#d7301f",
+        "circle-opacity": 0.7,
+        "circle-stroke-width": 1,
+        "circle-stroke-color": "#000"
+      }
+    }
+  ]
+}

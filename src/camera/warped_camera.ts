@@ -47,6 +47,6 @@ export function getWorldWindowInTile(camera: ProjectedCamera, unwrappedTileID: {
     if (!warp) return null;
     const {x, y, z} = unwrappedTileID.canonical;
     const window = warp.window({x, y, z, wrap: unwrappedTileID.wrap});
-    if (!window || (window[0] <= 0 && window[1] >= EXTENT)) return null;
+    if (window[0] <= 0 && window[1] >= EXTENT) return null;
     return window;
 }

@@ -1,0 +1,97 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "An image source across the antimeridian on a world centered on 150 degrees east fills the outline a GeoJSON line draws through its four corners.",
+      "width": 512,
+      "height": 256
+    }
+  },
+  "center": [
+    150,
+    0
+  ],
+  "zoom": 0,
+  "projection": {
+    "type": "equal-earth",
+    "central-meridian": 150
+  },
+  "sources": {
+    "image": {
+      "type": "image",
+      "coordinates": [
+        [
+          120,
+          60
+        ],
+        [
+          220,
+          60
+        ],
+        [
+          220,
+          -60
+        ],
+        [
+          120,
+          -60
+        ]
+      ],
+      "url": "local://image/0.png"
+    },
+    "outline": {
+      "type": "geojson",
+      "data": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120,
+            60
+          ],
+          [
+            220,
+            60
+          ],
+          [
+            220,
+            -60
+          ],
+          [
+            120,
+            -60
+          ],
+          [
+            120,
+            60
+          ]
+        ]
+      }
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "#dddddd"
+      }
+    },
+    {
+      "id": "image",
+      "type": "raster",
+      "source": "image",
+      "paint": {
+        "raster-fade-duration": 0
+      }
+    },
+    {
+      "id": "outline",
+      "type": "line",
+      "source": "outline",
+      "paint": {
+        "line-color": "#ff0000",
+        "line-width": 2
+      }
+    }
+  ]
+}

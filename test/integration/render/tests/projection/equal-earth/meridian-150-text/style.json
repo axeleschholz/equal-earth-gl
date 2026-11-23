@@ -1,0 +1,72 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "Labels and dots from a mercator vector tile used as the world tile, on a world centered on 150 degrees east: those at either end of the world are drawn once, whole, at one end.",
+      "width": 512,
+      "height": 256
+    }
+  },
+  "center": [
+    150,
+    0
+  ],
+  "zoom": 0,
+  "projection": {
+    "type": "equal-earth",
+    "central-meridian": 150
+  },
+  "glyphs": "local://glyphs/{fontstack}/{range}.pbf",
+  "sources": {
+    "tiles": {
+      "type": "vector",
+      "maxzoom": 14,
+      "tiles": [
+        "local://tiles/14-8802-5374.mvt"
+      ]
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "#f2f2f2"
+      }
+    },
+    {
+      "id": "dots",
+      "type": "circle",
+      "source": "tiles",
+      "source-layer": "poi_label",
+      "paint": {
+        "circle-radius": 2,
+        "circle-color": "#d7301f"
+      }
+    },
+    {
+      "id": "poi",
+      "type": "symbol",
+      "source": "tiles",
+      "source-layer": "poi_label",
+      "layout": {
+        "text-field": "{name}",
+        "text-font": [
+          "Open Sans Semibold",
+          "Arial Unicode MS Bold"
+        ],
+        "text-size": 9,
+        "text-anchor": "top",
+        "text-offset": [
+          0,
+          0.3
+        ]
+      },
+      "paint": {
+        "text-color": "#000",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    }
+  ]
+}

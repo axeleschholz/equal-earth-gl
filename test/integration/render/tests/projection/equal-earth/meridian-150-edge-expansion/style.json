@@ -1,0 +1,45 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "The west edge of a world centered on 150.5 degrees east at zoom 3, which runs through tiles drawn from expansions: they end on the edge of the world, with no seams between them.",
+      "width": 512,
+      "height": 512
+    }
+  },
+  "center": [
+    -28,
+    30
+  ],
+  "zoom": 3.2,
+  "projection": {
+    "type": "equal-earth",
+    "central-meridian": 150.5
+  },
+  "sources": {
+    "vector_tiles": {
+      "type": "vector",
+      "tiles": [
+        "local://tiles/checkerboard.mvt"
+      ]
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "white"
+      }
+    },
+    {
+      "id": "ocean",
+      "type": "fill",
+      "source": "vector_tiles",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "black"
+      }
+    }
+  ]
+}

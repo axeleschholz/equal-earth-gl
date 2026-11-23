@@ -171,12 +171,10 @@ class EqualEarthTileWarp implements TileWarp {
         return out;
     }
 
-    window(tile: TileCoordinates): [number, number] | null {
+    window(tile: TileCoordinates): [number, number] {
         const unitsAcross = Math.pow(2, tile.z) * EXTENT;
         const origin = this._origin(tile);
-        const min = -origin * unitsAcross;
-        const max = (1 - origin) * unitsAcross;
-        return max <= 0 || min >= EXTENT ? null : [min, max];
+        return [-origin * unitsAcross, (1 - origin) * unitsAcross];
     }
 
     bounds(tile: TileCoordinates): [number, number, number, number] | null {

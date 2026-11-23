@@ -1,4 +1,5 @@
 import {mercatorWorldCoordinateHelper} from '../mercator_coordinate.ts';
+import {EXTENT} from '../../data/extent.ts';
 
 import type {WorldCoordinateHelper} from '../world_types.ts';
 
@@ -39,6 +40,14 @@ export function featureGeometryHelper(sourceTileGrid: TileGrid | undefined, worl
  */
 export type WarpedTile = {x: number; y: number; z: number; wrap?: number};
 
+/**
+ * @internal
+ * Whether any of a tile copy lies in the world, given the copy's {@link TileWarp.window}.
+ */
+export function tileLiesInWorld(window: [number, number]): boolean {
+    return window[1] > 0 && window[0] < EXTENT;
+}
+
 export interface TileWarp {
     /**
      * The values of `wrap` that tiles are drawn with. The world ends at the meridian opposite its central one,
@@ -56,10 +65,10 @@ export interface TileWarp {
      */
     warp(tile: WarpedTile, tx: number, ty: number, out: [number, number]): [number, number];
     /**
-     * The part of a tile copy that lies in the world, as the tile x of the world's west and east edges, which can
-     * be far outside the tile, or `null` for a copy that lies wholly outside the world.
+     * The tile x of the world's west and east edges in a tile copy, which can be far outside the tile: the part
+     * of the copy between them lies in the world. See {@link tileLiesInWorld}.
      */
-    window(tile: WarpedTile): [number, number] | null;
+    window(tile: WarpedTile): [number, number];
     /**
      * The bounding box on the world plane of the part of a tile copy that lies in the world, as
      * `[minX, minY, maxX, maxY]`, or `null` for a copy that lies wholly outside it. The boxes of the top and

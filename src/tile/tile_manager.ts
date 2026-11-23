@@ -6,7 +6,7 @@ import {TileCache} from './tile_cache.ts';
 import {MercatorCoordinate} from '../geo/mercator_coordinate.ts';
 import {EXTENT} from '../data/extent.ts';
 import {now} from '../util/time_control.ts';
-import {OverscaledTileID} from './tile_id.ts';
+import {OverscaledTileID, type CanonicalTileID} from './tile_id.ts';
 import {SourceFeatureState} from '../source/source_state.ts';
 import {config} from '../util/config.ts';
 import {coveringTiles, coveringZoomLevel} from '../geo/projection/covering_tiles.ts';
@@ -247,6 +247,18 @@ export class TileManager extends Evented<SourceEventType> {
             tile.upload(context);
             tile.prepare(this.map.style.imageManager);
         }
+    }
+
+    /**
+     * The tiles an image source is drawn with: its one tile in every copy of the world in view. On a plane that
+     * mercator tiles are warped onto, that is each of the warp's copies, see `TileWarp.copies`: the image can lie
+     * at either end of a re-centred world, or across its edge, and what a copy holds past the edge is not drawn.
+     */
+    private _getImageTileIDs(projectedCamera: ProjectedCamera, worldCoordinateHelper: WorldCoordinateHelper, tileID: CanonicalTileID): OverscaledTileID[] {
+        const warp = resolveTileGrid(this._source.tileGrid, worldCoordinateHelper) === 'mercator' ? worldCoordinateHelper.mercatorTileWarp : null;
+        if (warp) return warp.copies.map(wrap => new OverscaledTileID(tileID.z, wrap, tileID.z, tileID.x, tileID.y));
+        return getCameraMath(projectedCamera).getVisibleUnwrappedCoordinates(projectedCamera, worldCoordinateHelper, tileID)
+            .map((unwrapped) => new OverscaledTileID(unwrapped.canonical.z, unwrapped.wrap, unwrapped.canonical.z, unwrapped.canonical.x, unwrapped.canonical.y));
     }
 
     /**
@@ -568,8 +580,7 @@ export class TileManager extends Evented<SourceEventType> {
         if (!this.used && !this.usedForTerrain) {
             idealTileIDs = [];
         } else if (this._source.tileID) { // image source
-            idealTileIDs = getCameraMath(projectedCamera).getVisibleUnwrappedCoordinates(projectedCamera, worldCoordinateHelper, this._source.tileID)
-                .map((unwrapped) => new OverscaledTileID(unwrapped.canonical.z, unwrapped.wrap, unwrapped.canonical.z, unwrapped.canonical.x, unwrapped.canonical.y));
+            idealTileIDs = this._getImageTileIDs(projectedCamera, worldCoordinateHelper, this._source.tileID);
         } else {
             idealTileIDs = coveringTiles(projectedCamera, worldCoordinateHelper, {
                 tileSize: this.usedForTerrain ? this.tileSize : this._source.tileSize,

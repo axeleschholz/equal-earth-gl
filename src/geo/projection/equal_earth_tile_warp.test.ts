@@ -3,6 +3,7 @@ import {EXPANSION_OVERZOOM, equalEarthTileWarp as warp, evaluateExpansion, getEq
 import {equalEarthWorldCoordinateHelper as helper, getEqualEarthWorldCoordinateHelper} from './equal_earth_world.ts';
 import {latFromMercatorY, lngFromMercatorX} from '../mercator_coordinate.ts';
 import {EXTENT} from '../../data/extent.ts';
+import {tileLiesInWorld} from './tile_warp.ts';
 
 type Tile = {x: number; y: number; z: number};
 
@@ -272,11 +273,11 @@ describe('getEqualEarthTileWarp', () => {
         const tileEastOfTheEdge = {x: 4, y: 3, z: 3};
         const tileWestOfTheEdge = {x: 2, y: 3, z: 3};
 
-        expect(pacific.window({...tileEastOfTheEdge, wrap: 0})).toBeNull();
+        expect(tileLiesInWorld(pacific.window({...tileEastOfTheEdge, wrap: 0}))).toBe(false);
         expect(pacific.bounds({...tileEastOfTheEdge, wrap: 0})).toBeNull();
-        expect(pacific.window({...tileEastOfTheEdge, wrap: -1})).not.toBeNull();
-        expect(pacific.window({...tileWestOfTheEdge, wrap: 0})).not.toBeNull();
-        expect(pacific.window({...tileWestOfTheEdge, wrap: -1})).toBeNull();
+        expect(tileLiesInWorld(pacific.window({...tileEastOfTheEdge, wrap: -1}))).toBe(true);
+        expect(tileLiesInWorld(pacific.window({...tileWestOfTheEdge, wrap: 0}))).toBe(true);
+        expect(tileLiesInWorld(pacific.window({...tileWestOfTheEdge, wrap: -1}))).toBe(false);
     });
 
     test('puts a position in each copy where the re-centred plane puts its lng/lat', () => {
@@ -293,7 +294,7 @@ describe('getEqualEarthTileWarp', () => {
             const lat = latFromMercatorY((tile.y + ty / EXTENT) / tiles);
             const wrap = pacific.copies.find(copy => {
                 const window = pacific.window({...tile, wrap: copy});
-                return window && tx >= window[0] && tx < window[1];
+                return tx >= window[0] && tx < window[1];
             });
             const expected = pacificHelper.worldFromLngLat(lng, lat);
 

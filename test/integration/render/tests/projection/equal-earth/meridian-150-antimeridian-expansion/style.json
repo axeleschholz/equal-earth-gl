@@ -1,0 +1,45 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "The antimeridian in the middle of a world centered on 150 degrees east at zoom 3: no seam between the tiles on its two sides.",
+      "width": 512,
+      "height": 512
+    }
+  },
+  "center": [
+    180,
+    30
+  ],
+  "zoom": 3.2,
+  "projection": {
+    "type": "equal-earth",
+    "central-meridian": 150
+  },
+  "sources": {
+    "vector_tiles": {
+      "type": "vector",
+      "tiles": [
+        "local://tiles/checkerboard.mvt"
+      ]
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "white"
+      }
+    },
+    {
+      "id": "ocean",
+      "type": "fill",
+      "source": "vector_tiles",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "black"
+      }
+    }
+  ]
+}

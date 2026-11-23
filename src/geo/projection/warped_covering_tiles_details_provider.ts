@@ -2,6 +2,7 @@ import {OverscaledTileID} from '../../tile/tile_id.ts';
 import {Aabb} from '../../util/primitives/aabb.ts';
 import {EXTENT} from '../../data/extent.ts';
 import {MercatorCoveringTilesDetailsProvider} from './mercator_covering_tiles_details_provider.ts';
+import {tileLiesInWorld} from './tile_warp.ts';
 
 import type {MercatorCoordinate} from '../mercator_coordinate.ts';
 import type {CoveringTilesOptionsInternal} from './covering_tiles.ts';
@@ -34,7 +35,7 @@ export class WarpedCoveringTilesDetailsProvider extends MercatorCoveringTilesDet
     }
 
     hasTile(tileID: {x: number; y: number; z: number}, wrap: number): boolean {
-        return this._warp.window({x: tileID.x, y: tileID.y, z: tileID.z, wrap}) !== null;
+        return tileLiesInWorld(this._warp.window({x: tileID.x, y: tileID.y, z: tileID.z, wrap}));
     }
 
     override getTileBoundingVolume(tileID: {x: number; y: number; z: number}, wrap: number, elevation: number, options: CoveringTilesOptionsInternal): Aabb {

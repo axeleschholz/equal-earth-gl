@@ -32,9 +32,6 @@ function getExpansion(warp: TileWarp, tile: WarpedTile): Float32Array {
 
 const scratchCenter: [number, number] = [0, 0];
 
-/** The window given to the shader for a tile copy outside the world: an empty one, so all of it is discarded. */
-const EMPTY_WINDOW: [number, number] = [0, 0];
-
 /**
  * @internal
  * What the shaders of a projection that warps mercator tiles onto its plane need to draw one such tile, in the
@@ -51,8 +48,9 @@ const EMPTY_WINDOW: [number, number] = [0, 0];
  *   tile x of the world's west and east edges, see `TileWarp.window`, which the shader could not derive at
  *   these zooms.
  * - `clipAntimeridian` names the sides at which fragments are discarded: 1 for those past an edge of the world,
- *   set where one runs through the tile or its buffer, and 2 and 4 for line fragments past the top or bottom of
- *   the mercator square in the tiles of the top and bottom row, whose pole caps would show the buffer.
+ *   which is set for every tile, since what is drawn with a tile's data can reach far past the tile, as an image
+ *   source does; and 2 and 4 for line fragments past the top or bottom of the mercator square in the tiles of the
+ *   top and bottom row, whose pole caps would show the buffer.
  */
 export function getWarpedProjectionData(projectedCamera: MercatorProjectedCamera, overscaledTileID: OverscaledTileID | null, warp: TileWarp): RendererProjectionData {
     const canonical = overscaledTileID ? overscaledTileID.canonical : {x: 0, y: 0, z: 0};
@@ -62,8 +60,7 @@ export function getWarpedProjectionData(projectedCamera: MercatorProjectedCamera
     const worldSize = projectedCamera.worldSize;
     const matrix: Mat4f64 = new Float64Array(16);
     mat4.identity(matrix);
-    const [windowMin, windowMax] = warp.window(tile) ?? EMPTY_WINDOW;
-    const edgeIsNear = windowMin > -EXTENT || windowMax < 2 * EXTENT;
+    const [windowMin, windowMax] = warp.window(tile);
 
     const data: RendererProjectionData = {
         mainMatrix: null,
@@ -71,7 +68,7 @@ export function getWarpedProjectionData(projectedCamera: MercatorProjectedCamera
         clippingPlane: [0, 0, 0, 0],
         projectionTransition: 0,
         fallbackMatrix: null,
-        clipAntimeridian: (edgeIsNear ? 1 : 0) + (tile.y === 0 ? 2 : 0) + (tile.y === tiles - 1 ? 4 : 0),
+        clipAntimeridian: 1 + (tile.y === 0 ? 2 : 0) + (tile.y === tiles - 1 ? 4 : 0),
     };
 
     if (tile.z < warp.expansionMinZoom) {
