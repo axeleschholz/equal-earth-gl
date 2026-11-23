@@ -1,6 +1,6 @@
 import {describe, expect, test} from 'vitest';
-import {EXPANSION_OVERZOOM, equalEarthTileWarp as warp, evaluateExpansion} from './equal_earth_tile_warp.ts';
-import {equalEarthWorldCoordinateHelper as helper} from './equal_earth_world.ts';
+import {EXPANSION_OVERZOOM, equalEarthTileWarp as warp, evaluateExpansion, getEqualEarthTileWarp} from './equal_earth_tile_warp.ts';
+import {equalEarthWorldCoordinateHelper as helper, getEqualEarthWorldCoordinateHelper} from './equal_earth_world.ts';
 import {latFromMercatorY, lngFromMercatorX} from '../mercator_coordinate.ts';
 import {EXTENT} from '../../data/extent.ts';
 
@@ -85,12 +85,13 @@ describe('equalEarthTileWarp.warp', () => {
         }
     });
 
-    test('keeps buffer positions past the antimeridian on it', () => {
+    test('places buffer positions past the edge of the world beyond it, where the plane would continue', () => {
         const left = warp.warp({x: 0, y: 1, z: 2}, -500, 100, [0, 0]);
         const onEdge = warp.warp({x: 0, y: 1, z: 2}, 0, 100, [0, 0]);
-        expect(left).toEqual(onEdge);
-        const right = warp.warp({x: 3, y: 1, z: 2}, EXTENT + 500, 100, [0, 0]);
-        expect(right).toEqual(warp.warp({x: 3, y: 1, z: 2}, EXTENT, 100, [0, 0]));
+        const inside = warp.warp({x: 0, y: 1, z: 2}, 500, 100, [0, 0]);
+
+        expect(left[0] - onEdge[0]).toBeCloseTo(onEdge[0] - inside[0], 12);
+        expect(left[0]).toBeLessThan(onEdge[0]);
     });
 
     test('keeps positions past the mercator square below the pole', () => {
@@ -242,5 +243,79 @@ describe('equalEarthTileWarp.expansion', () => {
                 }
             }
         }
+    });
+});
+
+describe('getEqualEarthTileWarp', () => {
+    test('is the one warp of the antimeridian-edged world at central meridian 0, and one shared warp per other meridian', () => {
+        expect(getEqualEarthTileWarp(0)).toBe(warp);
+        expect(getEqualEarthTileWarp(150)).toBe(getEqualEarthTileWarp(150));
+        expect(warp.copies).toEqual([0]);
+        expect(getEqualEarthTileWarp(150).copies).toEqual([0, -1]);
+    });
+
+    test('splits the world tile at the edge of the world into a copy for each end', () => {
+        const pacific = getEqualEarthTileWarp(150);
+        const edge = (150 - 180 + 180) / 360 * EXTENT;
+
+        const [west0, east0] = pacific.window({x: 0, y: 0, z: 0, wrap: 0});
+        const [west1, east1] = pacific.window({x: 0, y: 0, z: 0, wrap: -1});
+
+        expect(east0).toBeCloseTo(edge, 6);
+        expect(west0).toBeCloseTo(edge - EXTENT, 6);
+        expect(west1).toBeCloseTo(edge, 6);
+        expect(east1).toBeCloseTo(edge + EXTENT, 6);
+    });
+
+    test('has one copy of a tile clear of the edge, and none of the other', () => {
+        const pacific = getEqualEarthTileWarp(150);
+        const tileEastOfTheEdge = {x: 4, y: 3, z: 3};
+        const tileWestOfTheEdge = {x: 2, y: 3, z: 3};
+
+        expect(pacific.window({...tileEastOfTheEdge, wrap: 0})).toBeNull();
+        expect(pacific.bounds({...tileEastOfTheEdge, wrap: 0})).toBeNull();
+        expect(pacific.window({...tileEastOfTheEdge, wrap: -1})).not.toBeNull();
+        expect(pacific.window({...tileWestOfTheEdge, wrap: 0})).not.toBeNull();
+        expect(pacific.window({...tileWestOfTheEdge, wrap: -1})).toBeNull();
+    });
+
+    test('puts a position in each copy where the re-centred plane puts its lng/lat', () => {
+        const pacific = getEqualEarthTileWarp(150);
+        const pacificHelper = getEqualEarthWorldCoordinateHelper(150);
+        const random = seededRandom(7);
+        for (let i = 0; i < 200; i++) {
+            const z = Math.floor(random() * 8);
+            const tile = randomTile(random, z);
+            const tx = random() * EXTENT;
+            const ty = random() * EXTENT;
+            const tiles = Math.pow(2, z);
+            const lng = lngFromMercatorX((tile.x + tx / EXTENT) / tiles);
+            const lat = latFromMercatorY((tile.y + ty / EXTENT) / tiles);
+            const wrap = pacific.copies.find(copy => {
+                const window = pacific.window({...tile, wrap: copy});
+                return window && tx >= window[0] && tx < window[1];
+            });
+            const expected = pacificHelper.worldFromLngLat(lng, lat);
+
+            const [x, y] = pacific.warp({...tile, wrap}, tx, ty, [0, 0]);
+
+            expect(x).toBeCloseTo(expected.x, 11);
+            expect(y).toBeCloseTo(expected.y, 11);
+        }
+    });
+
+    test('bounds the part of a tile copy that lies in the world', () => {
+        const pacific = getEqualEarthTileWarp(150);
+
+        const eastEnd = pacific.bounds({x: 0, y: 0, z: 0, wrap: 0});
+        const westEnd = pacific.bounds({x: 0, y: 0, z: 0, wrap: -1});
+
+        expect(eastEnd[0]).toBeGreaterThan(0.5);
+        expect(eastEnd[2]).toBe(1);
+        expect(westEnd[0]).toBe(0);
+        expect(westEnd[2]).toBeLessThan(0.6);
+        const narrow = pacific.bounds({x: 3, y: 3, z: 3, wrap: 0});
+        expect(narrow[2]).toBe(1);
+        expect(narrow[0]).toBeGreaterThan(0.9);
     });
 });

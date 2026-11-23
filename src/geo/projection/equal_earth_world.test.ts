@@ -1,5 +1,5 @@
 import {describe, expect, test} from 'vitest';
-import {equalEarthTileMatrixSet, equalEarthWorldCoordinateHelper as helper} from './equal_earth_world.ts';
+import {equalEarthTileMatrixSet, equalEarthWorldCoordinateHelper as helper, getEqualEarthWorldCoordinateHelper} from './equal_earth_world.ts';
 import {mercatorWorldCoordinateHelper} from '../mercator_coordinate.ts';
 import {CRSWorldCoordinateHelper, identityCrs} from './crs.ts';
 import {LngLat} from '../lng_lat.ts';
@@ -99,5 +99,36 @@ describe('the tile grid and bounds of the other world mappings', () => {
         const crsHelper = new CRSWorldCoordinateHelper(identityCrs);
         expect(crsHelper.sourceTileGrid).toBe('plane');
         expect(crsHelper.worldBounds).toEqual([0, 0, 1, 1]);
+    });
+});
+
+describe('getEqualEarthWorldCoordinateHelper', () => {
+    test('is the plane tile sets are cut for at central meridian 0, and a plane of its own at any other', () => {
+        expect(getEqualEarthWorldCoordinateHelper(0)).toBe(helper);
+        expect(getEqualEarthWorldCoordinateHelper(150)).toBe(getEqualEarthWorldCoordinateHelper(150));
+        expect(helper.tileGridName).toBe('equal-earth');
+        expect(getEqualEarthWorldCoordinateHelper(150).tileGridName).toBeUndefined();
+        expect(getEqualEarthWorldCoordinateHelper(150).centralMeridian).toBe(150);
+    });
+
+    test('puts the central meridian in the middle and ends the world at the meridian opposite it', () => {
+        const pacific = getEqualEarthWorldCoordinateHelper(150);
+
+        expect(pacific.worldFromLngLat(150, 0).x).toBeCloseTo(0.5, 12);
+        expect(pacific.worldFromLngLat(-29.9999, 0).x).toBeLessThan(0.001);
+        expect(pacific.worldFromLngLat(-30.0001, 0).x).toBeGreaterThan(0.999);
+        expect(pacific.worldFromLngLat(180, 0).x).toBeCloseTo(pacific.worldFromLngLat(-180, 0).x, 12);
+    });
+
+    test('takes plane positions back to longitudes counted from Greenwich', () => {
+        const pacific = getEqualEarthWorldCoordinateHelper(150);
+        for (const [lng, lat] of [[150, 0], [-170, 40], [175, -60], [-40, 10], [0, 80], [100, -85]]) {
+            const world = pacific.worldFromLngLat(lng, lat);
+
+            const lngLat = pacific.lngLatFromWorld(world.x, world.y);
+
+            expect(lngLat.lng).toBeCloseTo(lng, 8);
+            expect(lngLat.lat).toBeCloseTo(lat, 8);
+        }
     });
 });

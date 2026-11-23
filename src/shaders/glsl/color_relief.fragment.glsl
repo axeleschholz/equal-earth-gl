@@ -26,6 +26,7 @@ float getElevationStop(int stop) {
 }
 
 void main() {
+    clipWorldEdge();
     float el = getElevation(v_pos);
 
     // Binary search

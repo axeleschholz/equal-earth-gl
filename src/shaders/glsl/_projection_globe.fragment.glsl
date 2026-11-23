@@ -8,3 +8,7 @@ void clipAntimeridian() {
         discard;
     }
 }
+
+// The globe has no edge of the world that a tile could cross. See _projection_equal_earth.fragment.glsl.
+void clipWorldEdge() {
+}

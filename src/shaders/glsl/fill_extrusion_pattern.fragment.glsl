@@ -15,6 +15,7 @@ in vec4 v_lighting;
 #pragma maplibre: define lowp float pixel_ratio_to
 
 void main() {
+    clipWorldEdge();
     #pragma maplibre: initialize lowp float base
     #pragma maplibre: initialize lowp float height
     #pragma maplibre: initialize mediump vec4 pattern_from

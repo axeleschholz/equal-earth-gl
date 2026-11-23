@@ -9,7 +9,7 @@ uniform highp float u_projection_transition;
 uniform mat4 u_projection_fallback_matrix;
 #endif
 
-// The in-tile coordinates of the projected vertex, used by clipAntimeridian() in the fragment shader.
+// The in-tile coordinates of the projected vertex, used by clipWorldEdge() and clipAntimeridian() in the fragment shader.
 out highp float v_projection_tile_x;
 out highp float v_projection_tile_y;
 
@@ -112,16 +112,13 @@ vec2 equalEarthWarpExpansion(float tileX, float tileY, float pole, out float xSc
     return vec2(u * a + m[2][1] * aDifference, y);
 }
 
-// The position that u_projection_matrix takes to clip space, for a position in the tile.
-// A position in the tile's buffer past the antimeridian stays on it.
+// The position that u_projection_matrix takes to clip space, for a position in the tile. A position past an edge of
+// the world lands outside the world, where clipWorldEdge() in the fragment shader discards it.
 vec2 equalEarthWarp(vec2 posInTile, float pole, out float xScale) {
-    float minX = -u_projection_tile_mercator_coords.x / u_projection_tile_mercator_coords.z;
-    float maxX = (1.0 - u_projection_tile_mercator_coords.x) / u_projection_tile_mercator_coords.z;
-    float tileX = clamp(posInTile.x, minX, maxX);
     if (u_projection_transition < 0.5) {
-        return equalEarthWarpExact(tileX, posInTile.y, pole, xScale);
+        return equalEarthWarpExact(posInTile.x, posInTile.y, pole, xScale);
     }
-    return equalEarthWarpExpansion(tileX, posInTile.y, pole, xScale);
+    return equalEarthWarpExpansion(posInTile.x, posInTile.y, pole, xScale);
 }
 
 vec4 equalEarthProject(vec2 posInTile, float pole, float elevation) {

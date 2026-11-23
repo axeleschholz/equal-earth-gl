@@ -4,7 +4,7 @@ import {EQUAL_EARTH_HALF_HEIGHT, EQUAL_EARTH_HALF_WIDTH, equalEarthJacobian, equ
 
 import type {TileWarp} from './tile_warp.ts';
 
-type TileCoordinates = {x: number; y: number; z: number};
+type TileCoordinates = {x: number; y: number; z: number; wrap?: number};
 
 const WORLD_METERS = 2 * EQUAL_EARTH_HALF_WIDTH;
 
@@ -98,7 +98,8 @@ function interpolate(nodes: Float64Array, values: Float64Array): Float64Array {
  * on its latitude alone. In a mercator tile, longitude is linear in `u` and latitude depends on `v` alone. So the
  * warp of a tile is two functions of `v`: with `A(v)` the x per unit of `u`, and `kappa` the tile center's
  * longitude in units of the tile's width, `x - x(center) = u * A(v) + kappa * (A(v) - A(0))`, and
- * `y - y(center) = C(v)` with `C(0) = 0`.
+ * `y - y(center) = C(v)` with `C(0) = 0`. The longitude is counted from the central meridian, and in a copy of a tile
+ * that the edge of the world runs through, on the side of the world that the copy lies on.
  *
  * The coefficients are `A`'s nine, lowest power first, then `kappa`, then `C`'s eight from the first power, then
  * the values `A` and `C` take on the pole the tile's row touches, which is beyond any `v`, or zeros in the rows
@@ -141,22 +142,49 @@ class EqualEarthTileWarp implements TileWarp {
      * for nine terms.
      */
     readonly expansionMinZoom: number = 3;
+    readonly copies: readonly number[];
+    /**
+     * The mercator x of the world's east edge, the meridian opposite the central one, in 0..1 and 1 when the edge
+     * is the antimeridian. The world shows mercator x from one less than this up to it.
+     */
+    private readonly _edge: number;
     private readonly _parallel: [number, number] = [0, 0];
+
+    constructor(centralMeridian: number) {
+        const edge = ((centralMeridian / 360) % 1 + 1) % 1;
+        this._edge = edge === 0 ? 1 : edge;
+        this.copies = this._edge === 1 ? [0] : [0, -1];
+    }
+
+    /** Where the west edge of a tile copy lies across the world: 0 on the world's west edge, 1 on its east edge. */
+    private _origin(tile: TileCoordinates): number {
+        return tile.x / Math.pow(2, tile.z) + (tile.wrap ?? 0) + 1 - this._edge;
+    }
 
     warp(tile: TileCoordinates, tx: number, ty: number, out: [number, number]): [number, number] {
         const tiles = Math.pow(2, tile.z);
-        const mercatorX = Math.max(0, Math.min(1, (tile.x + tx / EXTENT) / tiles));
+        const across = this._origin(tile) + tx / EXTENT / tiles;
         const lat = latitudeOfMercatorY((tile.y + ty / EXTENT) / tiles);
         const [xPerDegree, y] = equalEarthParallel(lat, this._parallel);
-        out[0] = 0.5 + (mercatorX * 360 - 180) * xPerDegree / WORLD_METERS;
+        out[0] = 0.5 + (across * 360 - 180) * xPerDegree / WORLD_METERS;
         out[1] = 0.5 - y / WORLD_METERS;
         return out;
     }
 
-    bounds(tile: TileCoordinates): [number, number, number, number] {
+    window(tile: TileCoordinates): [number, number] | null {
+        const unitsAcross = Math.pow(2, tile.z) * EXTENT;
+        const origin = this._origin(tile);
+        const min = -origin * unitsAcross;
+        const max = (1 - origin) * unitsAcross;
+        return max <= 0 || min >= EXTENT ? null : [min, max];
+    }
+
+    bounds(tile: TileCoordinates): [number, number, number, number] | null {
         const tiles = Math.pow(2, tile.z);
-        const west = tile.x / tiles * 360 - 180;
-        const east = (tile.x + 1) / tiles * 360 - 180;
+        const origin = this._origin(tile);
+        const west = Math.max(-180, origin * 360 - 180);
+        const east = Math.min(180, (origin + 1 / tiles) * 360 - 180);
+        if (west >= east) return null;
         const north = tile.y === 0 ? 90 : latitudeOfMercatorY(tile.y / tiles);
         const south = tile.y === tiles - 1 ? -90 : latitudeOfMercatorY((tile.y + 1) / tiles);
         const [northXPerDegree, northY] = equalEarthParallel(north, this._parallel);
@@ -176,7 +204,7 @@ class EqualEarthTileWarp implements TileWarp {
 
     jacobian(tile: TileCoordinates, tx: number, ty: number): [number, number, number, number] {
         const tiles = Math.pow(2, tile.z);
-        const lng = (tile.x + tx / EXTENT) / tiles * 360 - 180;
+        const lng = (this._origin(tile) + tx / EXTENT / tiles) * 360 - 180;
         const lat = latitudeOfMercatorY((tile.y + ty / EXTENT) / tiles);
         const [xByLng, xByLat, , yByLat] = equalEarthJacobian(lng, lat);
         const lngByTx = 360 / (tiles * EXTENT);
@@ -212,7 +240,7 @@ class EqualEarthTileWarp implements TileWarp {
             if (k >= 1) coefficients[C_BEFORE_FIRST + k] = c[k] * scale;
             scale /= halfRange;
         }
-        coefficients[KAPPA] = tile.x + 0.5 - tiles / 2;
+        coefficients[KAPPA] = this._origin(tile) * tiles + 0.5 - tiles / 2;
         if (tile.y === 0 || tile.y === tiles - 1) {
             const pole = equalEarthParallel(tile.y === 0 ? 90 : -90, this._parallel);
             coefficients[POLE_A] = pole[0] * degreesAcross / WORLD_METERS;
@@ -222,8 +250,24 @@ class EqualEarthTileWarp implements TileWarp {
     }
 }
 
+const warps = new Map<number, TileWarp>();
+
 /**
  * @internal
- * The warp of mercator tiles onto the Equal Earth plane. It holds no map's state, so every map shares it.
+ * The warp of mercator tiles onto the Equal Earth plane whose central meridian is the given longitude. It holds no
+ * map's state, so every map with that central meridian shares it.
  */
-export const equalEarthTileWarp: TileWarp = new EqualEarthTileWarp();
+export function getEqualEarthTileWarp(centralMeridian: number): TileWarp {
+    let warp = warps.get(centralMeridian);
+    if (!warp) {
+        warp = new EqualEarthTileWarp(centralMeridian);
+        warps.set(centralMeridian, warp);
+    }
+    return warp;
+}
+
+/**
+ * @internal
+ * The warp of mercator tiles onto the Equal Earth plane with its central meridian at 0.
+ */
+export const equalEarthTileWarp: TileWarp = getEqualEarthTileWarp(0);

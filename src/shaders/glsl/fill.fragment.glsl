@@ -2,6 +2,7 @@
 #pragma maplibre: define lowp float opacity
 
 void main() {
+    clipWorldEdge();
     #pragma maplibre: initialize highp vec4 color
     #pragma maplibre: initialize lowp float opacity
 

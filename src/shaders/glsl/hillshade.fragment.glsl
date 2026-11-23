@@ -151,6 +151,7 @@ void combined_hillshade(vec2 deriv)
 }
 
 void main() {
+    clipWorldEdge();
     highp vec2 size = vec2(textureSize(u_image, 0));
     highp vec2 texturePos = (v_pos * (size - 2.0) + 1.0) / size;
     vec4 pixel = texture(u_image, texturePos);

@@ -20,7 +20,7 @@ const Y_SCALE = f(Math.sqrt(3) / 2 * 1.340264 / (2 * Math.PI));
  */
 export function shaderProject(data: RendererProjectionData, tx: number, ty: number): [number, number, number, number] {
     const [offsetX, offsetY, scaleX, scaleY] = data.tileMercatorCoords.map(f);
-    const x = Math.max(f(-offsetX / scaleX), Math.min(f(f(1 - offsetX) / scaleX), f(tx)));
+    const x = f(tx);
     const pole = ty < -32767.5 ? 1 : ty > 32766.5 ? -1 : 0;
     let planeX: number;
     let planeY: number;
@@ -67,6 +67,18 @@ export function shaderProject(data: RendererProjectionData, tx: number, ty: numb
         out.push(f(f(f(m[row] * planeX) + f(m[4 + row] * planeY)) + m[12 + row]));
     }
     return out as [number, number, number, number];
+}
+
+/**
+ * Whether `clipWorldEdge()` of `_projection_equal_earth.fragment.glsl` discards a fragment at a tile x, in single
+ * precision.
+ */
+export function shaderDiscards(data: RendererProjectionData, tx: number): boolean {
+    if ((Number(data.clipAntimeridian) & 1) === 0) return false;
+    const [x, y, z] = data.tileMercatorCoords.map(f);
+    const west = data.projectionTransition < 0.5 ? f(-x / z) : x;
+    const east = data.projectionTransition < 0.5 ? f(f(1 - x) / z) : y;
+    return f(tx) < west || f(tx) >= east;
 }
 
 /** Where the shader puts a tile position on screen, in pixels from the middle of the viewport. */

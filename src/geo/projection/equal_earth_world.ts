@@ -2,7 +2,7 @@ import {LngLat} from '../lng_lat.ts';
 import {MercatorCoordinate} from '../mercator_coordinate.ts';
 import {clamp} from '../../util/util.ts';
 import {EQUAL_EARTH_HALF_HEIGHT, EQUAL_EARTH_HALF_WIDTH, equalEarthForward, equalEarthInverse} from './equal_earth_math.ts';
-import {equalEarthTileWarp} from './equal_earth_tile_warp.ts';
+import {getEqualEarthTileWarp} from './equal_earth_tile_warp.ts';
 
 import type {WorldCoordinateHelper} from '../world_types.ts';
 import type {TileMatrixSet} from './tile_matrix_set.ts';
@@ -31,9 +31,11 @@ export class EqualEarthWorldCoordinateHelper implements WorldCoordinateHelper {
     /** The world is a single bounded outline: no world copies and no wrapping across the antimeridian. */
     readonly wraps = false;
     readonly sourceTileGrid: TileGrid = 'mercator';
-    readonly tileGridName: string | undefined = 'equal-earth';
+    /** Tile sets are cut for the plane whose central meridian is 0, EPSG:8857, and for no other. */
+    readonly tileGridName: string | undefined;
     readonly tileMatrixSet: TileMatrixSet = equalEarthTileMatrixSet;
-    readonly mercatorTileWarp: TileWarp = equalEarthTileWarp;
+    readonly mercatorTileWarp: TileWarp;
+    readonly centralMeridian: number;
     readonly bendsMercatorLines = true;
     /** The projection places every latitude, so GeoJSON is tiled up to both poles. */
     readonly latitudeRange: [number, number] = [-90, 90];
@@ -46,10 +48,21 @@ export class EqualEarthWorldCoordinateHelper implements WorldCoordinateHelper {
     private readonly _scratch: [number, number] = [0, 0];
 
     /**
-     * lng/lat to the world square. The world has one copy, so a longitude past the antimeridian is the same place
-     * inside it: 200 is -160. The antimeridian itself stays on the edge it names, 180 east and -180 west.
+     * @param centralMeridian - the longitude drawn down the middle of the world, -180 to 180
+     */
+    constructor(centralMeridian: number = 0) {
+        this.centralMeridian = centralMeridian;
+        this.mercatorTileWarp = getEqualEarthTileWarp(centralMeridian);
+        this.tileGridName = centralMeridian === 0 ? 'equal-earth' : undefined;
+    }
+
+    /**
+     * lng/lat to the world square. The world has one copy, so a longitude more than half a turn from the central
+     * meridian is the same place inside it: with the central meridian at 0, 200 is -160. The meridian opposite the
+     * central one stays on the edge it is given for, half a turn east or west.
      */
     worldFromLngLat(lng: number, lat: number, altitude?: number): MercatorCoordinate {
+        lng -= this.centralMeridian;
         if (lng > 180 || lng < -180) lng = ((lng + 180) % 360 + 360) % 360 - 180;
         const [x, y] = equalEarthForward(lng, lat, this._scratch);
         return new MercatorCoordinate((x + EQUAL_EARTH_HALF_WIDTH) / EXTENT, (EQUAL_EARTH_HALF_WIDTH - y) / EXTENT, altitude === undefined ? 0 : altitude / EXTENT);
@@ -64,11 +77,20 @@ export class EqualEarthWorldCoordinateHelper implements WorldCoordinateHelper {
         const crsX = x * EXTENT - EQUAL_EARTH_HALF_WIDTH;
         const crsY = EQUAL_EARTH_HALF_WIDTH - y * EXTENT;
         const position = equalEarthInverse(crsX, crsY, this._scratch);
-        if (position) return new LngLat(position[0], position[1]);
+        if (position) return new LngLat(this._fromCentralMeridian(position[0]), position[1]);
 
         const lat = Math.abs(crsY) >= EQUAL_EARTH_HALF_HEIGHT ? Math.sign(crsY) * 90 : equalEarthInverse(0, crsY, this._scratch)[1];
         const halfWidthAtLat = equalEarthForward(180, lat, this._scratch)[0];
-        return new LngLat(clamp(crsX / halfWidthAtLat, -1, 1) * 180, lat);
+        return new LngLat(this._fromCentralMeridian(clamp(crsX / halfWidthAtLat, -1, 1) * 180), lat);
+    }
+
+    /** A longitude counted from the central meridian as one counted from Greenwich, in -180..180. */
+    private _fromCentralMeridian(lng: number): number {
+        if (this.centralMeridian === 0) return lng;
+        lng += this.centralMeridian;
+        if (lng > 180) return lng - 360;
+        if (lng < -180) return lng + 360;
+        return lng;
     }
 
     hasLngLat(x: number, y: number): boolean {
@@ -84,8 +106,24 @@ export class EqualEarthWorldCoordinateHelper implements WorldCoordinateHelper {
     }
 }
 
+const helpers = new Map<number, EqualEarthWorldCoordinateHelper>();
+
 /**
  * @internal
- * The one Equal Earth world mapping: it holds no map's state, so every map in the projection shares it.
+ * The Equal Earth world mapping whose central meridian is the given longitude. It holds no map's state, so every
+ * map with that central meridian shares it.
  */
-export const equalEarthWorldCoordinateHelper: EqualEarthWorldCoordinateHelper = new EqualEarthWorldCoordinateHelper();
+export function getEqualEarthWorldCoordinateHelper(centralMeridian: number): EqualEarthWorldCoordinateHelper {
+    let helper = helpers.get(centralMeridian);
+    if (!helper) {
+        helper = new EqualEarthWorldCoordinateHelper(centralMeridian);
+        helpers.set(centralMeridian, helper);
+    }
+    return helper;
+}
+
+/**
+ * @internal
+ * The Equal Earth world mapping with its central meridian at 0, the plane of EPSG:8857.
+ */
+export const equalEarthWorldCoordinateHelper: EqualEarthWorldCoordinateHelper = getEqualEarthWorldCoordinateHelper(0);

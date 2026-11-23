@@ -33,30 +33,49 @@ export function featureGeometryHelper(sourceTileGrid: TileGrid | undefined, worl
  * shape there, and everything that draws, selects or queries such tiles goes through this mapping. The shaders
  * of the projection compute the same mapping on the GPU.
  */
+/**
+ * A tile of the mercator grid as a {@link TileWarp} takes it. `wrap` tells apart the copies of a tile that the
+ * edge of the world runs through, see {@link TileWarp.copies}, and is 0 when left out.
+ */
+export type WarpedTile = {x: number; y: number; z: number; wrap?: number};
+
 export interface TileWarp {
     /**
+     * The values of `wrap` that tiles are drawn with. The world ends at the meridian opposite its central one,
+     * which is the antimeridian only when the central meridian is 0. Otherwise the tiles on one side of the
+     * antimeridian lie a whole world further along than their mercator x says, which their `wrap` of -1 stands
+     * for, and a tile that the edge runs through is drawn once with each `wrap`, one part at each end of the world.
+     */
+    readonly copies: readonly number[];
+    /**
      * A position in a mercator tile, in tile units (0..EXTENT across the tile), to the 0..1 world plane.
-     * A position in the tile's buffer past the antimeridian is kept on it, and one past the top or bottom of the
-     * mercator square lies between there and the pole.
+     * A position past the edge of the world is placed where the plane would continue, outside the world, and one
+     * past the top or bottom of the mercator square lies between there and the pole.
      *
      * @param out - the array the result is written to
      */
-    warp(tile: {x: number; y: number; z: number}, tx: number, ty: number, out: [number, number]): [number, number];
+    warp(tile: WarpedTile, tx: number, ty: number, out: [number, number]): [number, number];
     /**
-     * The tile's bounding box on the world plane: `[minX, minY, maxX, maxY]`. The boxes of the top and bottom rows
-     * of tiles reach the pole, since those tiles are drawn with a cap that covers it.
+     * The part of a tile copy that lies in the world, as the tile x of the world's west and east edges, which can
+     * be far outside the tile, or `null` for a copy that lies wholly outside the world.
      */
-    bounds(tile: {x: number; y: number; z: number}): [number, number, number, number];
+    window(tile: WarpedTile): [number, number] | null;
+    /**
+     * The bounding box on the world plane of the part of a tile copy that lies in the world, as
+     * `[minX, minY, maxX, maxY]`, or `null` for a copy that lies wholly outside it. The boxes of the top and
+     * bottom rows of tiles reach the pole, since those tiles are drawn with a cap that covers it.
+     */
+    bounds(tile: WarpedTile): [number, number, number, number] | null;
     /**
      * World plane units per tile unit at a position in a tile: `[dX/dtx, dX/dty, dY/dtx, dY/dty]`.
      */
-    jacobian(tile: {x: number; y: number; z: number}, tx: number, ty: number): [number, number, number, number];
+    jacobian(tile: WarpedTile, tx: number, ty: number): [number, number, number, number];
     /**
-     * The warp of one tile as twenty polynomial coefficients, see `evaluateExpansion` of the projection, which
+     * The warp of one tile copy as twenty polynomial coefficients, see `evaluateExpansion` of the projection, which
      * give a position's offset on the world plane from the warp of the tile's center. A shader can evaluate them in
      * single precision at any zoom, where the warp itself would lose the position among the digits of the world.
      */
-    expansion(tile: {x: number; y: number; z: number}): Float64Array;
+    expansion(tile: WarpedTile): Float64Array;
     /**
      * The lowest tile zoom at which {@link TileWarp.expansion} is as good as the warp: within 0.05 px of it for a
      * tile drawn up to sixteen times its own size.

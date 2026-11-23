@@ -279,6 +279,9 @@ export function expandCullingToContentElevation(frustum: Frustum, plane: vec4, c
     };
 }
 
+/** The wrap of the one copy of the world that is always drawn. */
+const MAIN_WORLD: readonly number[] = [0];
+
 /**
  * Returns a list of tiles that optimally covers the screen. Adapted for globe projection.
  * Correctly handles LOD when moving over the antimeridian.
@@ -335,7 +338,9 @@ export function coveringTiles(projectedCamera: ProjectedCamera, worldCoordinateH
         }
     }
 
-    stack.push(newRootTile(0));
+    for (const wrap of detailsProvider.getRootWraps?.() ?? MAIN_WORLD) {
+        stack.push(newRootTile(wrap));
+    }
 
     while (stack.length > 0) {
         const it = stack.pop();
@@ -343,6 +348,7 @@ export function coveringTiles(projectedCamera: ProjectedCamera, worldCoordinateH
         const y = it.y;
         let fullyVisible = it.fullyVisible;
         const tileID = {x, y, z: it.zoom};
+        if (detailsProvider.hasTile && !detailsProvider.hasTile(tileID, it.wrap)) continue;
         const boundingVolume = detailsProvider.getTileBoundingVolume(tileID, it.wrap, elevationForTileCulling, options);
 
         // Visibility of a tile is not required if any of its ancestor is fully visible

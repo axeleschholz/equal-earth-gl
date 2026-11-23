@@ -14,6 +14,7 @@ uniform float u_contrast_factor;
 uniform vec3 u_spin_weights;
 
 void main() {
+    clipWorldEdge();
 
     // read and cross-fade colors from the main and parent tiles
     vec4 color0 = texture(u_image0, v_pos0.xy / v_pos0.z);

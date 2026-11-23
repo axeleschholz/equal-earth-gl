@@ -7,6 +7,9 @@ import type {MercatorCoordinate} from '../mercator_coordinate.ts';
 import type {CoveringTilesOptionsInternal} from './covering_tiles.ts';
 import type {TileWarp} from './tile_warp.ts';
 
+/** The bounds given for a tile copy that lies outside the world, which no view shows. */
+const OUTSIDE_THE_WORLD: [number, number, number, number] = [-2, -2, -2, -2];
+
 /**
  * @internal
  * How tiles of the mercator grid are selected on a flat plane they are warped onto. A tile is where its warp
@@ -21,8 +24,17 @@ export class WarpedCoveringTilesDetailsProvider extends MercatorCoveringTilesDet
         this._warp = warp;
     }
 
-    override getWrap(_centerCoord: MercatorCoordinate, _tileID: {x: number; y: number; z: number}, _parentWrap: number): number {
-        return 0;
+    /** A tile keeps the wrap of the copy of the world it was reached in, see `TileWarp.copies`. */
+    override getWrap(_centerCoord: MercatorCoordinate, _tileID: {x: number; y: number; z: number}, parentWrap: number): number {
+        return parentWrap;
+    }
+
+    getRootWraps(): readonly number[] {
+        return this._warp.copies;
+    }
+
+    hasTile(tileID: {x: number; y: number; z: number}, wrap: number): boolean {
+        return this._warp.window({x: tileID.x, y: tileID.y, z: tileID.z, wrap}) !== null;
     }
 
     override getTileBoundingVolume(tileID: {x: number; y: number; z: number}, wrap: number, elevation: number, options: CoveringTilesOptionsInternal): Aabb {
@@ -33,7 +45,7 @@ export class WarpedCoveringTilesDetailsProvider extends MercatorCoveringTilesDet
             minElevation = minMax.minElevation ?? minElevation;
             maxElevation = minMax.maxElevation ?? maxElevation;
         }
-        const [minX, minY, maxX, maxY] = this._warp.bounds(tileID);
+        const [minX, minY, maxX, maxY] = this._warp.bounds({x: tileID.x, y: tileID.y, z: tileID.z, wrap}) ?? OUTSIDE_THE_WORLD;
         return new Aabb([minX, minY, minElevation], [maxX, maxY, maxElevation]);
     }
 

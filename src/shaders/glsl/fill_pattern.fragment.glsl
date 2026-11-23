@@ -16,6 +16,7 @@ in vec2 v_pos_b;
 #pragma maplibre: define lowp vec4 pattern_to
 
 void main() {
+    clipWorldEdge();
     #pragma maplibre: initialize lowp float opacity
     #pragma maplibre: initialize highp vec4 color
     #pragma maplibre: initialize mediump vec4 pattern_from

@@ -54,4 +54,14 @@ export interface CoveringTilesDetailsProvider {
      * flat size leaves this out.
      */
     getTileZoomOffset?: (tileID: {x: number; y: number; z: number}) => number;
+    /**
+     * The wraps of the copies of the world that tiles are selected in beside the world copies of a wrapping
+     * plane, when they are not just the main one, 0. See `TileWarp.copies`.
+     */
+    getRootWraps?: () => readonly number[];
+    /**
+     * Whether a tile copy exists at all, on a plane where some lie outside the world. One that does not is left
+     * out with everything below it.
+     */
+    hasTile?: (tileID: {x: number; y: number; z: number}, wrap: number) => boolean;
 }

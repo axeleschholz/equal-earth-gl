@@ -75,6 +75,11 @@ export interface WorldCoordinateHelper {
      */
     bendsMercatorLines?: boolean;
     /**
+     * The longitude drawn down the middle of the world, on a plane that can be centered on any meridian. The world
+     * ends at the meridian opposite it.
+     */
+    centralMeridian?: number;
+    /**
      * The quad tile matrix set whose tile 0/0/0 is the world square, in CRS units: EPSG:3857 meters for mercator, the
      * registered definition's `tileMatrixSet` for a planar CRS. The `{bbox}` tile URL token is expressed in it.
      */

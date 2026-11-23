@@ -1,13 +1,13 @@
 import {describe, expect, test} from 'vitest';
 import {vec4} from 'gl-matrix';
 import {getWarpedProjectionData} from './warped_projection_data.ts';
-import {equalEarthTileWarp as warp} from './equal_earth_tile_warp.ts';
-import {equalEarthWorldCoordinateHelper as helper} from './equal_earth_world.ts';
+import {equalEarthTileWarp as warp, getEqualEarthTileWarp} from './equal_earth_tile_warp.ts';
+import {equalEarthWorldCoordinateHelper as helper, getEqualEarthWorldCoordinateHelper} from './equal_earth_world.ts';
 import {mercatorXfromLng, mercatorYfromLat} from '../mercator_coordinate.ts';
 import {OverscaledTileID} from '../../tile/tile_id.ts';
 import {EXTENT} from '../../data/extent.ts';
 import {createTestCamera} from '../../util/test/util.ts';
-import {shaderPixels} from '../../../test/unit/lib/warped_shader_mirror.ts';
+import {shaderDiscards, shaderPixels} from '../../../test/unit/lib/warped_shader_mirror.ts';
 
 import type {MercatorProjectedCamera} from '../../camera/projected_camera.ts';
 
@@ -42,7 +42,7 @@ describe('getWarpedProjectionData', () => {
         expect(data.tileMercatorCoords).toEqual([0.75, 0.25, 1 / 4 / EXTENT, 1 / 4 / EXTENT]);
     });
 
-    test('clips line fragments past the antimeridian in the first and last columns, and past the mercator square in the top and bottom rows', () => {
+    test('clips fragments past the edge of the world in the columns beside it, and line fragments past the mercator square in the top and bottom rows', () => {
         const camera = cameraAt(0, 0, 3);
         const clip = (x: number, y: number, z = 3) => getWarpedProjectionData(camera, new OverscaledTileID(z, 0, z, x, y), warp).clipAntimeridian;
         expect(clip(4, 2)).toBe(0);
@@ -103,12 +103,37 @@ describe('getWarpedProjectionData', () => {
         }
     });
 
-    test('keeps buffer positions past the antimeridian on it', () => {
+    test('discards fragments past the edge of the world, exactly at it, in both regimes', () => {
         for (const z of [1, 6]) {
-            const camera = cameraAt(-179.5, 20, z + 0.5);
-            const tileID = tileAt(-179.9, 20, z);
-            const data = getWarpedProjectionData(camera, tileID, warp);
-            expect(shaderPixels(camera, data, -300, 4000)).toEqual(shaderPixels(camera, data, 0, 4000));
+            const data = getWarpedProjectionData(cameraAt(-179.5, 20, z + 0.5), tileAt(-179.9, 20, z), warp);
+
+            expect(shaderDiscards(data, -0.5)).toBe(true);
+            expect(shaderDiscards(data, 0)).toBe(false);
+            expect(shaderDiscards(data, 4000)).toBe(false);
+        }
+    });
+
+    test('draws each copy of a tile that the edge of a re-centred world runs through on its own side, to 0.05 px', () => {
+        const pacific = getEqualEarthTileWarp(150);
+        const pacificHelper = getEqualEarthWorldCoordinateHelper(150);
+        const offset = 1e-7;
+        for (const z of [0, 2, 3, 9, 16, 22]) {
+            const {canonical} = tileAt(-30, 20, z);
+            const edgeX = (mercatorXfromLng(-30) * Math.pow(2, z) - canonical.x) * EXTENT;
+            for (const [wrap, side] of [[0, -1], [-1, 1]] as const) {
+                const camera = createTestCamera({width: 1024, height: 768, zoom: z + 0.5, center: [-30 + side * offset, 20]}, {projection: 'mercator', worldCoordinateHelper: pacificHelper}).projectedCamera as MercatorProjectedCamera;
+                const data = getWarpedProjectionData(camera, new OverscaledTileID(z, wrap, z, canonical.x, canonical.y), pacific);
+                const tx = edgeX + side * 200;
+                const world = pacific.warp({...canonical, wrap}, tx, 3000, [0, 0]);
+                const clip = vec4.transformMat4([], [world[0] * camera.worldSize, world[1] * camera.worldSize, 0, 1], camera.modelViewProjectionMatrix);
+                const reference = [clip[0] / clip[3] * camera.width / 2, clip[1] / clip[3] * camera.height / 2];
+
+                const actual = shaderPixels(camera, data, tx, 3000);
+
+                expect(Math.hypot(actual[0] - reference[0], actual[1] - reference[1]), `wrap ${wrap}, zoom ${z}`).toBeLessThan(0.05);
+                expect(shaderDiscards(data, edgeX + side * 2), `wrap ${wrap}, zoom ${z}`).toBe(false);
+                expect(shaderDiscards(data, edgeX - side * 2), `wrap ${wrap}, zoom ${z}`).toBe(true);
+            }
         }
     });
 });

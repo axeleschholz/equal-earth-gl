@@ -8,6 +8,7 @@ in vec2 v_extrude;
 #define GAUSS_COEF 0.3989422804014327
 
 void main() {
+    clipWorldEdge();
     #pragma maplibre: initialize highp float weight
 
     // Kernel density estimation with a Gaussian kernel of size 5x5

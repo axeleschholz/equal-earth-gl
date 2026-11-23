@@ -12,6 +12,7 @@ in vec2 v_pos_a;
 in vec2 v_pos_b;
 
 void main() {
+    clipWorldEdge();
     vec2 imagecoord = mod(v_pos_a, 1.0);
     vec2 pos = mix(u_pattern_tl_a / u_texsize, u_pattern_br_a / u_texsize, imagecoord);
     vec4 color1 = texture(u_image, pos);

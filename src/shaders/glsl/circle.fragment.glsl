@@ -10,6 +10,7 @@ in float v_visibility;
 #pragma maplibre: define lowp float stroke_opacity
 
 void main() {
+    clipWorldEdge();
     #pragma maplibre: initialize highp vec4 color
     #pragma maplibre: initialize mediump float radius
     #pragma maplibre: initialize lowp float blur

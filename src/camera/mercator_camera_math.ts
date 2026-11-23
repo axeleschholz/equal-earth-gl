@@ -709,7 +709,8 @@ const scratchWarped: [number, number] = [0, 0];
  * plane, as the projection's shaders do, and the camera takes it from there to clip space.
  */
 function projectWarpedTileCoordinates(projectedCamera: MercatorProjectedCamera, x: number, y: number, unwrappedTileID: UnwrappedTileID, elevation?: number): PointProjection {
-    const [worldX, worldY] = projectedCamera.tileWarp.warp(unwrappedTileID.canonical, x, y, scratchWarped);
+    const {canonical, wrap} = unwrappedTileID;
+    const [worldX, worldY] = projectedCamera.tileWarp.warp({x: canonical.x, y: canonical.y, z: canonical.z, wrap}, x, y, scratchWarped);
     const pos = [worldX * projectedCamera.worldSize, worldY * projectedCamera.worldSize, elevation ?? 0, 1] as vec4;
     vec4.transformMat4(pos, pos, projectedCamera.modelViewProjectionMatrix);
     const w = pos[3];
