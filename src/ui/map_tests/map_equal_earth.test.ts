@@ -187,6 +187,31 @@ describe('terrain on a map in equal-earth', () => {
         map.remove();
     });
 
+    test('reloads the mercator tile that a change to GeoJSON data touches while it is on', async () => {
+        const {OverscaledTileID} = await import('../../tile/tile_id.ts');
+        const map = createMap({style: {...demStyle('equal-earth'), sources: {...demStyle('equal-earth').sources, points: {type: 'geojson', data: {type: 'FeatureCollection', features: []}}}}});
+        await map.once('style.load');
+        map.setTerrain({source: 'dem'});
+        const source = map.getSource('points');
+        const tile = {tileID: new OverscaledTileID(6, 0, 6, 34, 22), latestFeatureIndex: {}, state: 'loaded'};
+        const {LngLatBounds} = await import('../../geo/lng_lat_bounds.ts');
+
+        expect(source.shouldReloadTile(tile as any, {affectedBounds: [new LngLatBounds([14.06, 47.01, 14.06, 47.01])]} as any)).toBe(true);
+        map.remove();
+    });
+
+    test('does not touch image sources when it is turned on or off on a mercator map', async () => {
+        const map = createMap({style: {...demStyle('mercator'), sources: {...demStyle('mercator').sources, image: {type: 'image', url: 'http://example.com/image.png', coordinates: [[0, 1], [1, 1], [1, 0], [0, 0]]}}}});
+        await map.once('style.load');
+        const setCoordinates = vi.spyOn(map.getSource<any>('image'), 'setCoordinates');
+
+        map.setTerrain({source: 'dem'});
+        map.setTerrain(null);
+
+        expect(setCoordinates).not.toHaveBeenCalled();
+        map.remove();
+    });
+
     test('leaves out tile sources cut in the Equal Earth grid while it is on', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const {OverscaledTileID} = await import('../../tile/tile_id.ts');

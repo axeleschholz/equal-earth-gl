@@ -3218,8 +3218,9 @@ export class Map extends Evented<MapEventType> {
     }
 
     /**
-     * Get the terrain options last set. In a projection that does not draw terrain yet, such as `equal-earth`,
-     * they are kept while the map is drawn without terrain, and take effect when the map moves to one that does.
+     * Get the terrain options last set. Where the map's projection cannot draw that terrain, as `equal-earth`
+     * cannot from a DEM source cut in the Equal Earth grid, they are kept while the map is drawn without terrain,
+     * and take effect when the map moves to a projection that can.
      * @returns the TerrainSpecification passed to setTerrain
      * @example
      * ```ts

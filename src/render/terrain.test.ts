@@ -15,7 +15,8 @@ import {projectCamera} from '../camera/project_camera.ts';
 import {createNullGL} from '../util/test/null_gl.ts';
 import {createDEM, createDEMTerrain, createPainter, createRasterDEMTileManager, createTestCamera} from '../util/test/util.ts';
 import {CRSWorldCoordinateHelper, identityCrs} from '../geo/projection/crs.ts';
-import {equalEarthWorldCoordinateHelper} from '../geo/projection/equal_earth_world.ts';
+import {equalEarthWorldCoordinateHelper, getEqualEarthWorldCoordinateHelper} from '../geo/projection/equal_earth_world.ts';
+import {mercatorWorldCoordinateHelper} from '../geo/mercator_coordinate.ts';
 
 import type {TileManager} from '../tile/tile_manager.ts';
 import type {TerrainSpecification} from '@maplibre/maplibre-gl-style-spec';
@@ -537,10 +538,42 @@ describe('Terrain on a plane that mercator tiles are warped onto', () => {
         expect(terrain.getDrawnElevationForLngLat(new LngLat(20, 70))).toBeCloseTo(100, 6);
     });
 
-    test('keeps the skirt of mercator tiles', () => {
+    test('samples the drawn surface at a longitude given a turn too far', () => {
+        const terrain = createWarpedTerrain([new OverscaledTileID(3, 0, 3, 4, 1)]);
+        terrain.tileManager.getSourceTile = (tileID) => ({tileID, dem: createDEM(() => 100)} as any as Tile);
+
+        expect(terrain.getDrawnElevationForLngLat(new LngLat(380, 70))).toBeCloseTo(100, 6);
+    });
+
+    test('looks a lng/lat up in the copy of its tile that a re-centred world draws', () => {
+        const pacific = getEqualEarthWorldCoordinateHelper(150);
+        const terrain = new Terrain(createPainter(), createRasterDEMTileManager(), {source: 'dem'}, 'auto', () => pacific);
+        terrain.tileManager.getSourceTile = (tileID) => (tileID.wrap === -1 ? {tileID, dem: createDEM(() => 500)} as any as Tile : undefined);
+
+        expect(terrain.getElevationForLngLatZoom(new LngLat(100, 10), 3)).toBeCloseTo(500, 6);
+        expect(terrain.getMinTileElevationForLngLatZoom(new LngLat(100, 10), 3)).toBe(500);
+    });
+
+    test('samples positions of the plane the map is on now, after the map moved to it', () => {
+        let plane: any = mercatorWorldCoordinateHelper;
+        const terrain = new Terrain(createPainter(), createRasterDEMTileManager(), {source: 'dem'}, 'auto', () => plane);
+        terrain.tileManager.getRenderableTiles = () => [{tileID: new OverscaledTileID(3, 0, 3, 4, 1)} as Tile];
+        terrain.tileManager.getSourceTile = (tileID) => ({tileID, dem: createDEM(() => 100)} as any as Tile);
+        terrain.getCoverageIndex();
+        plane = equalEarthWorldCoordinateHelper;
+        const onPlane = equalEarthWorldCoordinateHelper.worldFromLngLat(20, 70);
+
+        expect(sampleAt(terrain.getCoverageIndex(), 1, onPlane.x, onPlane.y, false).covered).toBe(true);
+    });
+
+    test('keeps skirts short enough not to stand as a wall around the world, which has no neighbour to hide them', () => {
+        expect(createWarpedTerrain([]).getSkirtLength(0)).toBeLessThanOrEqual(10000);
+    });
+
+    test('keeps the skirt of mercator tiles where that is shorter', () => {
         const mercatorTerrain = new Terrain(createPainter(), createRasterDEMTileManager(), {source: 'dem'});
 
-        expect(createWarpedTerrain([]).getSkirtLength(3)).toBe(mercatorTerrain.getSkirtLength(3));
+        expect(createWarpedTerrain([]).getSkirtLength(14)).toBe(mercatorTerrain.getSkirtLength(14));
     });
 });
 

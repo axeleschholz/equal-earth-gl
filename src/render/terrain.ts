@@ -72,6 +72,13 @@ type MinMaxElevation = {
 };
 
 /**
+ * The longest skirt, in meters at an exaggeration of 1, of a terrain tile on a plane that shows one world: the
+ * tiles on the outline of the world have no neighbour that hides their skirts, so a skirt much higher than any
+ * step between two tiles' elevations would stand around the world as a wall.
+ */
+const MAX_SKIRT_ON_SINGLE_WORLD_M = 9000;
+
+/**
  * @internal
  * This is the main class which handles most of the 3D Terrain logic. It has the following topics:
  *
@@ -476,7 +483,8 @@ export class Terrain {
      */
     getSkirtLength(zoom: number): number {
         // divide by 5 is evaluated by trial & error to get a frame in the right height
-        return this._worldCoordinateHelper.metersPerWorldUnit(0.5, 0.5) / Math.pow(2, Math.max(zoom, 0)) / 5;
+        const length = this._worldCoordinateHelper.metersPerWorldUnit(0.5, 0.5) / Math.pow(2, Math.max(zoom, 0)) / 5;
+        return this._drawnOnAnotherPlane() ? Math.min(length, MAX_SKIRT_ON_SINGLE_WORLD_M * Math.max(1, this.exaggeration)) : length;
     }
 
     getMinTileElevationForLngLatZoom(lnglat: LngLat, zoom: number): number {
@@ -516,6 +524,26 @@ export class Terrain {
         return featureGeometryHelper(this.tileManager.tileManager.getSource?.()?.tileGrid, this._getWorldCoordinateHelper());
     }
 
+    /** Whether the terrain's tiles are warped onto the map's plane, which is then another than their grid's. */
+    private _drawnOnAnotherPlane(): boolean {
+        return this._getWorldCoordinateHelper() !== this._worldCoordinateHelper;
+    }
+
+    /**
+     * The wrap of the copy of a tile that holds a position, by its x in the tile, as the map draws it: 0, except on
+     * a plane that the terrain's tiles are warped onto with its world re-centred, where the tiles on one side of
+     * the antimeridian are drawn, and loaded, with another wrap, see `TileWarp.copies`.
+     */
+    private _getDrawnWrap(z: number, x: number, y: number, xInTile: number): number {
+        const warp = this._drawnOnAnotherPlane() ? this._getWorldCoordinateHelper().mercatorTileWarp : null;
+        if (!warp) return 0;
+        for (const wrap of warp.copies) {
+            const [west, east] = warp.window({x, y, z, wrap});
+            if (xInTile >= west && xInTile < east) return wrap;
+        }
+        return 0;
+    }
+
     _getOverscaledTileIDFromLngLatZoom(lnglat: LngLat, zoom: number): { tileID: OverscaledTileID; worldX: number; worldY: number} {
         const worldCoordinateHelper = this._worldCoordinateHelper;
         const location = worldCoordinateHelper.wraps ? lnglat.wrap() : lnglat;
@@ -524,7 +552,7 @@ export class Terrain {
         const worldX = worldCoordinate.x * worldSize;
         const worldY = worldCoordinate.y * worldSize;
         const tileX = Math.floor(worldX / EXTENT), tileY = Math.floor(worldY / EXTENT);
-        const tileID = new OverscaledTileID(zoom, 0, zoom, tileX, tileY);
+        const tileID = new OverscaledTileID(zoom, this._getDrawnWrap(zoom, tileX, tileY, worldX - tileX * EXTENT), zoom, tileX, tileY);
         return {
             tileID,
             worldX,

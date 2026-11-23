@@ -4,8 +4,8 @@
 
 1. **Draws** (done): background, fill, line and raster layers from ordinary Web Mercator tile sources, and GeoJSON, in Equal Earth at every zoom.
 2. **Parity for flat maps** (done): labels, queries, the remaining 2D layers, image sources, `fitBounds`, controls.
-3. **3D and extension points** (done, except terrain, which is refused with a warning): fill-extrusion, custom layers.
-4. **Equal Earth native:** tile sources cut in EPSG:8857, a central meridian option.
+3. **3D and extension points** (done): fill-extrusion, 3D terrain, custom layers.
+4. **Equal Earth native** (done): tile sources cut in EPSG:8857, a central meridian option.
 
 Nothing is published to npm yet. Licence: BSD-3-Clause, as upstream. The upstream README follows.
 

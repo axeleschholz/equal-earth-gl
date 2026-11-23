@@ -118,11 +118,11 @@ Such a source is drawn only in the `equal-earth` projection with its central mer
 
 ## Terrain
 
-3D terrain works as on a Mercator map: `map.setTerrain({source: 'dem'})`, or a style's `terrain`, with a raster-dem source of Web Mercator tiles. The terrain's tiles are warped onto the Equal Earth plane like any others, layers are draped on them, and the camera, markers, `queryTerrainElevation` and feature queries follow the surface. Elevation is in true meters against a plane that keeps areas, so slopes are not stretched with latitude the way Mercator stretches them.
+3D terrain works as on a Mercator map: `map.setTerrain({source: 'dem'})`, or a style's `terrain`, with a raster-dem source of Web Mercator tiles. The terrain's tiles are warped onto the Equal Earth plane like any others, layers are draped on them, and the camera, markers, `queryTerrainElevation` and feature queries follow the surface. Elevation is drawn in meters at the scale the map has on the equator. Equal Earth squeezes and stretches the ground differently east to west than north to south away from its standard parallels, so the same slope looks steeper along one direction than along the other there.
 
 Two things differ while terrain is on:
 
-- **GeoJSON is tiled in Web Mercator**, like the terrain it is draped on, instead of on the Equal Earth plane. It is then drawn through the warp like a tile source, so it has no data beyond 85.051° of latitude. Turning terrain on or off tiles every GeoJSON source again.
+- **GeoJSON is tiled in Web Mercator**, like the terrain it is draped on, instead of on the Equal Earth plane. It is then drawn through the warp like a tile source, so it has no data beyond 85.051° of latitude. Clusters are formed in Web Mercator too. Turning terrain on or off tiles every GeoJSON source again.
 - **Tile sources cut in the Equal Earth grid are not drawn**, with one console warning: they cannot be drawn into the terrain's Mercator tiles.
 
 A raster-dem source with `tileGrid: 'equal-earth'` cannot be the terrain's source. Such a request is kept, and `map.getTerrain()` returns it, but the map is drawn without terrain, with one console warning; the terrain comes on if the map moves to a projection that can draw it.

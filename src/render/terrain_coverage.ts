@@ -67,6 +67,8 @@ export class TerrainCoverage {
     /** undefined means not built yet; null that no terrain tile is renderable. */
     private _index: TerrainCoverageIndex | null | undefined;
     private _ownDemIndex: TerrainCoverageIndex | null | undefined;
+    /** The plane the indexes were built for, see {@link TerrainCoverageIndex.planeToGrid}; the map can move to another. */
+    private _indexedPlane: WorldCoordinateHelper | undefined;
 
     constructor(
         private readonly tileManager: TerrainTileManager,
@@ -88,6 +90,12 @@ export class TerrainCoverage {
      * @returns the index, or null when no terrain tile is renderable
      */
     getIndex(ownDemOnly: boolean = false): TerrainCoverageIndex | null {
+        const plane = this.getPlaneHelper();
+        if (plane !== this._indexedPlane) {
+            this._index = undefined;
+            this._ownDemIndex = undefined;
+            this._indexedPlane = plane;
+        }
         if (ownDemOnly) {
             if (this._ownDemIndex === undefined) this._ownDemIndex = this._build(true);
             return this._ownDemIndex;
@@ -105,7 +113,9 @@ export class TerrainCoverage {
         if (!index) return undefined;
         const worldCoordinateHelper = this.getWorldCoordinateHelper();
         const {x, y} = worldCoordinateHelper.worldFromLngLat(lnglat.lng, lnglat.lat);
-        const sample = sampleGridAt(index, this.exaggeration, x, y, worldCoordinateHelper.wraps && !index.planeToGrid);
+        const sample = index.planeToGrid ?
+            sampleGridAt(index, this.exaggeration, x - Math.floor(x), y, false) :
+            sampleGridAt(index, this.exaggeration, x, y, worldCoordinateHelper.wraps);
         return sample.demLoaded ? sample.elevation : undefined;
     }
 

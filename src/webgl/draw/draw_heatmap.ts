@@ -10,6 +10,7 @@ import {
 } from '../program/heatmap_program.ts';
 import {HEATMAP_FULL_RENDER_FBO_KEY} from '../../style/style_layer/heatmap_style_layer.ts';
 import {getCameraMath} from '../../camera/camera_math_factory.ts';
+import {hasTileWarp} from '../../camera/warped_camera.ts';
 
 import type {FrameRenderContext} from '../../render/frame_render_context.ts';
 import type {Context} from '../context.ts';
@@ -144,7 +145,7 @@ function prepareHeatmapTerrain(tile: Tile, layer: HeatmapStyleLayer, coord: Over
     context.clear({color: Color.transparent});
 
     const programConfiguration = bucket.programConfigurations.get(layer.id);
-    const program = frameRenderContext.useProgram('heatmap', programConfiguration, !frameRenderContext.data.isRenderingGlobe);
+    const program = frameRenderContext.useProgram('heatmap', programConfiguration, !frameRenderContext.data.isRenderingGlobe && !hasTileWarp(frameRenderContext.projectedCamera));
 
     const projectionData = frameRenderContext.getProjectionDataForTile(tile.tileID);
 
