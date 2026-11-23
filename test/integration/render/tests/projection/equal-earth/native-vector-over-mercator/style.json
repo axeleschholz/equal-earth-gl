@@ -1,0 +1,64 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "Outlines from tiles cut in the Equal Earth grid lie on the edges of the same water drawn from a warped mercator tile.",
+      "width": 512,
+      "height": 256
+    }
+  },
+  "center": [
+    10,
+    58
+  ],
+  "zoom": 2,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "glyphs": "local://glyphs/{fontstack}/{range}.pbf",
+  "sources": {
+    "native": {
+      "type": "vector",
+      "maxzoom": 2,
+      "tiles": [
+        "local://tiles/equal-earth/{z}-{x}-{y}.mvt"
+      ],
+      "tileGrid": "equal-earth"
+    },
+    "mercator": {
+      "type": "vector",
+      "maxzoom": 0,
+      "tiles": [
+        "local://tiles/{z}-{x}-{y}.mvt"
+      ]
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "white"
+      }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "mercator",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "#9ecae1"
+      }
+    },
+    {
+      "id": "coast",
+      "type": "line",
+      "source": "native",
+      "source-layer": "water",
+      "paint": {
+        "line-color": "#e31a1c",
+        "line-width": 1
+      }
+    }
+  ]
+}

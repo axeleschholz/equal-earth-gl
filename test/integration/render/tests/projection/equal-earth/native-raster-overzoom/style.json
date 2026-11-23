@@ -1,0 +1,64 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "A raster source of tiles cut in the Equal Earth grid drawn past its last zoom level, under the outlines of the same coasts from a warped mercator tile.",
+      "width": 512,
+      "height": 256
+    }
+  },
+  "center": [
+    -60,
+    -20
+  ],
+  "zoom": 3,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "glyphs": "local://glyphs/{fontstack}/{range}.pbf",
+  "sources": {
+    "native": {
+      "type": "raster",
+      "maxzoom": 1,
+      "tileSize": 256,
+      "tiles": [
+        "local://tiles/equal-earth/{z}-{x}-{y}.satellite.png"
+      ],
+      "tileGrid": "equal-earth"
+    },
+    "mercator": {
+      "type": "vector",
+      "maxzoom": 0,
+      "tiles": [
+        "local://tiles/{z}-{x}-{y}.mvt"
+      ]
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "white"
+      }
+    },
+    {
+      "id": "raster",
+      "type": "raster",
+      "source": "native",
+      "paint": {
+        "raster-fade-duration": 0
+      }
+    },
+    {
+      "id": "coast",
+      "type": "line",
+      "source": "mercator",
+      "source-layer": "water",
+      "paint": {
+        "line-color": "#ffff00",
+        "line-width": 1
+      }
+    }
+  ]
+}

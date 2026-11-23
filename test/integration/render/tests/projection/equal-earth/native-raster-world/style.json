@@ -1,0 +1,47 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "A raster source of tiles cut in the Equal Earth grid drawn as the whole world.",
+      "width": 512,
+      "height": 256
+    }
+  },
+  "center": [
+    0,
+    0
+  ],
+  "zoom": 0,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "glyphs": "local://glyphs/{fontstack}/{range}.pbf",
+  "sources": {
+    "native": {
+      "type": "raster",
+      "maxzoom": 1,
+      "tileSize": 256,
+      "tiles": [
+        "local://tiles/equal-earth/{z}-{x}-{y}.satellite.png"
+      ],
+      "tileGrid": "equal-earth"
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "white"
+      }
+    },
+    {
+      "id": "raster",
+      "type": "raster",
+      "source": "native",
+      "paint": {
+        "raster-fade-duration": 0
+      }
+    }
+  ]
+}

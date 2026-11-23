@@ -1,0 +1,91 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "A vector source of tiles cut in the Equal Earth grid draws fills, outlines, circles and labels as the whole world.",
+      "width": 512,
+      "height": 256
+    }
+  },
+  "center": [
+    0,
+    0
+  ],
+  "zoom": 0,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "glyphs": "local://glyphs/{fontstack}/{range}.pbf",
+  "sources": {
+    "native": {
+      "type": "vector",
+      "maxzoom": 2,
+      "tiles": [
+        "local://tiles/equal-earth/{z}-{x}-{y}.mvt"
+      ],
+      "tileGrid": "equal-earth"
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "white"
+      }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "native",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "#9ecae1"
+      }
+    },
+    {
+      "id": "coast",
+      "type": "line",
+      "source": "native",
+      "source-layer": "water",
+      "paint": {
+        "line-color": "#08519c",
+        "line-width": 1
+      }
+    },
+    {
+      "id": "dots",
+      "type": "circle",
+      "source": "native",
+      "source-layer": "places",
+      "paint": {
+        "circle-radius": 2.5,
+        "circle-color": "#d7301f"
+      }
+    },
+    {
+      "id": "labels",
+      "type": "symbol",
+      "source": "native",
+      "source-layer": "places",
+      "layout": {
+        "text-field": "{name}",
+        "text-font": [
+          "Open Sans Semibold",
+          "Arial Unicode MS Bold"
+        ],
+        "text-size": 10,
+        "text-anchor": "top",
+        "text-offset": [
+          0,
+          0.3
+        ]
+      },
+      "paint": {
+        "text-color": "#000",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    }
+  ]
+}

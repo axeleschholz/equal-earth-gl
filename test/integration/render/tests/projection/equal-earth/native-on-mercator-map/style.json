@@ -1,0 +1,63 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "description": "Tiles cut in the Equal Earth grid are left out of a mercator map, which draws its other layers.",
+      "width": 512,
+      "height": 256
+    }
+  },
+  "center": [
+    0,
+    0
+  ],
+  "zoom": 0,
+  "projection": {
+    "type": "mercator"
+  },
+  "glyphs": "local://glyphs/{fontstack}/{range}.pbf",
+  "sources": {
+    "native": {
+      "type": "vector",
+      "maxzoom": 2,
+      "tiles": [
+        "local://tiles/equal-earth/{z}-{x}-{y}.mvt"
+      ],
+      "tileGrid": "equal-earth"
+    },
+    "mercator": {
+      "type": "vector",
+      "maxzoom": 0,
+      "tiles": [
+        "local://tiles/{z}-{x}-{y}.mvt"
+      ]
+    }
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "type": "background",
+      "paint": {
+        "background-color": "white"
+      }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "mercator",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "#9ecae1"
+      }
+    },
+    {
+      "id": "native",
+      "type": "fill",
+      "source": "native",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "red"
+      }
+    }
+  ]
+}
