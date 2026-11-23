@@ -1,6 +1,6 @@
 # equal-earth-gl
 
-**equal-earth-gl** is a fork of [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) that draws maps in the Equal Earth projection. A style that names no projection renders in Equal Earth. Styles that name `mercator` or `globe` render as they do upstream. Status: all four stages of the design are complete, except terrain, which is not drawn in Equal Earth yet; see [the guide](docs/guides/equal-earth.md) and [the design](docs/superpowers/specs/2026-11-16-equal-earth-design.md).
+**equal-earth-gl** is a fork of [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) that draws maps in the Equal Earth projection. A style that names no projection renders in Equal Earth. Styles that name `mercator` or `globe` render as they do upstream. Status: all four stages of the design are complete, including 3D terrain; see [the guide](docs/guides/equal-earth.md) and [the design](docs/superpowers/specs/2026-11-16-equal-earth-design.md).
 
 1. **Draws** (done): background, fill, line and raster layers from ordinary Web Mercator tile sources, and GeoJSON, in Equal Earth at every zoom.
 2. **Parity for flat maps** (done): labels, queries, the remaining 2D layers, image sources, `fitBounds`, controls.

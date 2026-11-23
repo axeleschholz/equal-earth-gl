@@ -2,6 +2,17 @@
 ### ✨ Features and improvements
 - _...Add new stuff here..._
 
+## 6.18.0-ee.5
+
+### ✨ Features and improvements
+
+- Draw 3D terrain in `equal-earth` from Web Mercator raster-dem sources, with layers draped on it and the camera, markers and queries following the surface
+- Tile GeoJSON sources in Web Mercator while terrain is on in `equal-earth`, so they are draped on it
+
+### Known limits
+
+- A raster-dem source with `tileGrid: 'equal-earth'` cannot be a terrain source, and tile sources with that option are not drawn while terrain is on
+
 ## 6.18.0-ee.4
 
 ### ✨ Features and improvements
