@@ -1,8 +1,8 @@
 import {describe, expect, test} from 'vitest';
-import {withTileWarp} from './warped_camera.ts';
+import {getWorldWindowInTile, withTileWarp} from './warped_camera.ts';
 import {getCameraMath} from './camera_math_factory.ts';
 import {createTestCamera} from '../util/test/util.ts';
-import {equalEarthWorldCoordinateHelper as helper} from '../geo/projection/equal_earth_world.ts';
+import {equalEarthWorldCoordinateHelper as helper, getEqualEarthWorldCoordinateHelper} from '../geo/projection/equal_earth_world.ts';
 import {equalEarthTileWarp} from '../geo/projection/equal_earth_tile_warp.ts';
 import {getWarpedProjectionData} from '../geo/projection/warped_projection_data.ts';
 import {mercatorWorldCoordinateHelper, mercatorXfromLng, mercatorYfromLat} from '../geo/mercator_coordinate.ts';
@@ -123,5 +123,30 @@ describe('the projection data a custom layer gets with a warped camera', () => {
         const camera = cameraAt(20, 30, 1);
         const data = getCameraMath(camera).getProjectionDataForCustomLayer(camera);
         expect(data.fallbackMatrix).toBe(data.mainMatrix);
+    });
+});
+
+describe('getWorldWindowInTile', () => {
+    test('is the part in the world of a tile copy that the edge of a re-centred world runs through', () => {
+        const pacific = getEqualEarthWorldCoordinateHelper(150);
+        const camera = createTestCamera({width: 512, height: 512, zoom: 1, center: [150, 0]}, {projection: 'mercator', worldCoordinateHelper: pacific}).projectedCamera;
+        const warped = withTileWarp(camera, pacific, undefined);
+        const edge = (-30 + 180) / 360 * EXTENT;
+
+        const eastEnd = getWorldWindowInTile(warped, new OverscaledTileID(0, 0, 0, 0, 0).toUnwrapped());
+        const westEnd = getWorldWindowInTile(warped, new OverscaledTileID(0, -1, 0, 0, 0).toUnwrapped());
+
+        expect(eastEnd[1]).toBeCloseTo(edge, 6);
+        expect(eastEnd[0]).toBeLessThan(0);
+        expect(westEnd[0]).toBeCloseTo(edge, 6);
+        expect(westEnd[1]).toBeGreaterThan(EXTENT);
+    });
+
+    test('is null for a tile that lies in the world whole, and for a camera without a tile warp', () => {
+        const pacific = getEqualEarthWorldCoordinateHelper(150);
+        const camera = createTestCamera({width: 512, height: 512, zoom: 3, center: [150, 0]}, {projection: 'mercator', worldCoordinateHelper: pacific}).projectedCamera;
+
+        expect(getWorldWindowInTile(withTileWarp(camera, pacific, undefined), new OverscaledTileID(3, -1, 3, 7, 3).toUnwrapped())).toBeNull();
+        expect(getWorldWindowInTile(camera, new OverscaledTileID(0, 0, 0, 0, 0).toUnwrapped())).toBeNull();
     });
 });

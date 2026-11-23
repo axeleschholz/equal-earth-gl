@@ -1,4 +1,5 @@
 import {resolveTileGrid, type TileGrid} from '../geo/projection/tile_warp.ts';
+import {EXTENT} from '../data/extent.ts';
 
 import type {MercatorProjectedCamera, ProjectedCamera} from './projected_camera.ts';
 import type {WorldCoordinateHelper} from '../geo/world_types.ts';
@@ -33,4 +34,19 @@ export function withTileWarp<C extends ProjectedCamera>(camera: C, worldCoordina
  */
 export function hasTileWarp(camera: ProjectedCamera): boolean {
     return camera.projection === 'mercator' && camera.tileWarp !== undefined;
+}
+
+/**
+ * @internal
+ * The part of a tile that lies in the world, as the tile x of the world's west and east edges, when an edge of the
+ * world runs through the tile as the camera draws it, see `TileWarp.window`; `null` for a tile that lies in the
+ * world whole, which every tile does for a camera without a tile warp.
+ */
+export function getWorldWindowInTile(camera: ProjectedCamera, unwrappedTileID: {canonical: {x: number; y: number; z: number}; wrap: number}): [number, number] | null {
+    const warp = (camera as MercatorProjectedCamera).tileWarp;
+    if (!warp) return null;
+    const {x, y, z} = unwrappedTileID.canonical;
+    const window = warp.window({x, y, z, wrap: unwrappedTileID.wrap});
+    if (!window || (window[0] <= 0 && window[1] >= EXTENT)) return null;
+    return window;
 }

@@ -920,7 +920,10 @@ export class TileManager extends Evented<SourceEventType> {
      * lies beside the world altogether finds no tiles. The scale each of these tiles gets, which turns pixels into
      * tile units for the tolerance around features, is that of the direction the warp shrinks the tile most in at
      * the middle of the query, so that a feature can be hit wherever it is drawn. Mercator tiles end at 85.051
-     * degrees of latitude, and a point of the geometry beyond that is taken to be on that edge.
+     * degrees of latitude, and a point of the geometry beyond that is taken to be on that edge. The geometry
+     * is in the one mercator square whatever the tile's wrap, which only says at which end of a re-centred world
+     * the tile is drawn, see `TileWarp.copies`. A tile that the edge of the world runs through is there twice: each
+     * copy gets the geometry and keeps its own wrap, and a feature both find is reported once.
      */
     tilesIn(pointQueryGeometry: Point[], maxPitchScaleFactor: number, has3DLayer: boolean, projectedCamera: ProjectedCamera | undefined = this.projectedCamera, worldCoordinateHelper: WorldCoordinateHelper | undefined = this.worldCoordinateHelper): TileResult[] {
         const tileResults: TileResult[] = [];
@@ -948,8 +951,9 @@ export class TileManager extends Evented<SourceEventType> {
                 return mercatorWorldCoordinateHelper.worldFromLngLat(lngLat.lng, clamp(lngLat.lat, -MAX_VALID_LATITUDE, MAX_VALID_LATITUDE));
             };
         }
-        const queryGeometry = this.transformBbox(pointQueryGeometry, project, !allowWorldCopies);
-        const cameraQueryGeometry = this.transformBbox(cameraPointQueryGeometry, project, !allowWorldCopies);
+        const singleWorld = !allowWorldCopies || !!warp;
+        const queryGeometry = this.transformBbox(pointQueryGeometry, project, singleWorld);
+        const cameraQueryGeometry = this.transformBbox(cameraPointQueryGeometry, project, singleWorld);
 
         const ids = this.getIds();
         const queryBounds = Bounds.fromPoints(queryGeometry);
@@ -964,7 +968,7 @@ export class TileManager extends Evented<SourceEventType> {
                 continue;
             }
             // if the projection does not render world copies then we need to explicitly check for the bounding box crossing the antimeridian
-            const tileIDs = allowWorldCopies ? [tile.tileID] : [tile.tileID.unwrapTo(-1), tile.tileID.unwrapTo(0)];
+            const tileIDs = singleWorld ? [tile.tileID.unwrapTo(-1), tile.tileID.unwrapTo(0)] : [tile.tileID];
             let scale = Math.pow(2, projectedCamera.zoom - tile.tileID.overscaledZ);
             if (warp) scale *= warpedPixelScale(warp, tile.tileID, queryCenter);
             const queryPadding = maxPitchScaleFactor * tile.queryPadding * EXTENT / tile.tileSize / scale;
@@ -981,7 +985,7 @@ export class TileManager extends Evented<SourceEventType> {
 
                     tileResults.push({
                         tile,
-                        tileID: allowWorldCopies ? tileID : tileID.unwrapTo(0),
+                        tileID: singleWorld ? tileID.unwrapTo(warp ? tile.tileID.wrap : 0) : tileID,
                         queryGeometry: tileSpaceQueryGeometry,
                         cameraQueryGeometry: tileSpaceCameraQueryGeometry,
                         scale

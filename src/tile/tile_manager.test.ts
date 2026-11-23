@@ -3005,6 +3005,31 @@ describe('TileManager.tilesIn on a plane that mercator tiles are warped onto', (
         }
     });
 
+    test('gives both copies of a tile that the edge of a re-centred world runs through the query point, each with its own wrap', async () => {
+        const {getEqualEarthWorldCoordinateHelper} = await import('../geo/projection/equal_earth_world.ts');
+        const pacific = getEqualEarthWorldCoordinateHelper(150);
+        const {projectedCamera} = createTestCamera({width: 512, height: 512, zoom: 0, center: [150, 0]}, {projection: 'mercator', worldCoordinateHelper: pacific});
+        const tileManager = createTileManager({maxzoom: 0});
+        tileManager._source.loadTile = async (tile) => {
+            tile.state = 'loaded';
+        };
+        const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
+        tileManager.onAdd(undefined);
+        await dataPromise;
+        tileManager.update(projectedCamera, pacific);
+        const queryPoint = new Point(40, 250);
+        const around = [new Point(39, 249), new Point(41, 249), new Point(41, 251), new Point(39, 251), new Point(39, 249)];
+
+        const results = tileManager.tilesIn([queryPoint, ...around], 1, false, projectedCamera, pacific)
+            .filter(({queryGeometry}) => queryGeometry[0].x >= 0 && queryGeometry[0].x <= 8192);
+
+        expect(results.map(result => result.tileID.wrap).sort()).toEqual([-1, 0]);
+        const westEnd = results.find(result => result.tileID.wrap === -1);
+        const [x, y] = pacific.mercatorTileWarp.warp({x: 0, y: 0, z: 0, wrap: -1}, westEnd.queryGeometry[0].x, westEnd.queryGeometry[0].y, [0, 0]);
+        const drawn = getCameraMath(projectedCamera).locationToScreenPoint(projectedCamera, pacific, pacific.lngLatFromWorld(x, y));
+        expect(Math.hypot(drawn.x - queryPoint.x, drawn.y - queryPoint.y)).toBeLessThan(0.5);
+    });
+
     test('splits the long sides of a box, whose image in a mercator tile is curved', async () => {
         const {tileManager, projectedCamera, helper} = await equalEarthTiles([20, 30], 2);
         const box = [new Point(100, 100), new Point(400, 100), new Point(400, 300), new Point(100, 300), new Point(100, 100)];

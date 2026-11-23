@@ -1,7 +1,7 @@
 import {describe, expect, test} from 'vitest';
 import Point from '@mapbox/point-geometry';
 import {coveringTiles} from './covering_tiles.ts';
-import {equalEarthWorldCoordinateHelper as helper} from './equal_earth_world.ts';
+import {equalEarthWorldCoordinateHelper as helper, getEqualEarthWorldCoordinateHelper} from './equal_earth_world.ts';
 import {equalEarthTileWarp} from './equal_earth_tile_warp.ts';
 import {mercatorWorldCoordinateHelper, mercatorYfromLat, mercatorXfromLng} from '../mercator_coordinate.ts';
 import {getCameraMath} from '../../camera/camera_math_factory.ts';
@@ -156,5 +156,43 @@ describe('covering tiles of the plane\'s own grid', () => {
         const tiles = keys(coveringTiles(camera, mercatorWorldCoordinateHelper, {tileSize: 512}));
         expect(tiles).toEqual(['2/1/1', '2/1/2', '2/2/1', '2/2/2']);
         expect(keys(coveringTiles(camera, mercatorWorldCoordinateHelper, {tileSize: 512, tileGrid: 'mercator'}))).toEqual(tiles);
+    });
+});
+
+describe('covering mercator tiles on a re-centred equal-earth plane', () => {
+    test('covers the whole world with a copy of the world tile for each end', () => {
+        const pacific = getEqualEarthWorldCoordinateHelper(150);
+        const {projectedCamera} = createTestCamera({width: 1024, height: 512, zoom: 0, center: [150, 0]}, {projection: 'mercator', worldCoordinateHelper: pacific});
+
+        const tiles = coveringTiles(projectedCamera, pacific, {tileSize: 512, maxzoom: 0});
+
+        expect(tiles.map(tile => `${tile.canonical.z}/${tile.canonical.x}/${tile.canonical.y} wrap ${tile.wrap}`).sort()).toEqual(['0/0/0 wrap -1', '0/0/0 wrap 0']);
+    });
+
+    test('gives the tiles on each side of the antimeridian the wrap that puts them next to each other', () => {
+        const pacific = getEqualEarthWorldCoordinateHelper(150);
+        const {projectedCamera} = createTestCamera({width: 512, height: 512, zoom: 3, center: [180, 0]}, {projection: 'mercator', worldCoordinateHelper: pacific});
+
+        const tiles = coveringTiles(projectedCamera, pacific, {tileSize: 512});
+
+        const westOfIt = tiles.filter(tile => tile.canonical.x === 7);
+        const eastOfIt = tiles.filter(tile => tile.canonical.x === 0);
+        expect(westOfIt.length).toBeGreaterThan(0);
+        expect(eastOfIt.length).toBeGreaterThan(0);
+        expect(westOfIt.every(tile => tile.wrap === -1)).toBe(true);
+        expect(eastOfIt.every(tile => tile.wrap === 0)).toBe(true);
+    });
+
+    test('selects no copy of a tile that lies outside the world', () => {
+        const pacific = getEqualEarthWorldCoordinateHelper(150);
+        const warp = pacific.mercatorTileWarp;
+        const {projectedCamera} = createTestCamera({width: 512, height: 512, zoom: 4, center: [-30.5, 10]}, {projection: 'mercator', worldCoordinateHelper: pacific});
+
+        const tiles = coveringTiles(projectedCamera, pacific, {tileSize: 512});
+
+        expect(tiles.length).toBeGreaterThan(0);
+        for (const tile of tiles) {
+            expect(warp.window({...tile.canonical, wrap: tile.wrap}), tile.toString()).not.toBeNull();
+        }
     });
 });

@@ -11,7 +11,7 @@ import {TextAnchorEnum, type TextAnchor} from '../style/style_layer/variable_tex
 import {translatePosition, warnOnce} from '../util/util.ts';
 import {symbolInstance as symbolInstanceLayout} from '../data/bucket/symbol_attributes.ts';
 import {getCameraMath} from '../camera/camera_math_factory.ts';
-import {hasTileWarp, withTileWarp} from '../camera/warped_camera.ts';
+import {getWorldWindowInTile, hasTileWarp, withTileWarp} from '../camera/warped_camera.ts';
 
 import type {TileGrid} from '../geo/projection/tile_warp.ts';
 import type {WorldCoordinateHelper} from '../geo/world_types.ts';
@@ -515,12 +515,18 @@ export class Placement {
         const tileID = this.retainedQueryData[bucket.bucketInstanceId].tileID;
         const getElevation = this._getTerrainElevationFunc(tileID);
         const simpleProjectionMatrix = getCameraMath(this.projectedCamera).getFastPathSimpleProjectionMatrix(this.projectedCamera, tileID);
+        const worldWindow = getWorldWindowInTile(this.projectedCamera, unwrappedTileID);
 
         const placeSymbol = (symbolInstance: SymbolInstance, collisionArrays: CollisionArrays, symbolIndex: number) => {
             if (seenCrossTileIDs[symbolInstance.crossTileID]) return;
             if (holdingForFade) {
                 // Mark all symbols from this tile as "not placed", but don't add to seenCrossTileIDs, because we don't
                 // know yet if we have a duplicate in a parent tile that _should_ be placed.
+                this.placements[symbolInstance.crossTileID] = new JointPlacement(false, false, false);
+                return;
+            }
+            if (worldWindow && (symbolInstance.anchorX < worldWindow[0] || symbolInstance.anchorX >= worldWindow[1])) {
+                // The symbol lies past the edge of the world in this copy of its tile; the other copy places it.
                 this.placements[symbolInstance.crossTileID] = new JointPlacement(false, false, false);
                 return;
             }
