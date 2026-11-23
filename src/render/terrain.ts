@@ -12,6 +12,7 @@ import {isInBoundsForZoomLngLat} from '../util/world_bounds.ts';
 import {NORTH_POLE_Y, SOUTH_POLE_Y} from './subdivision.ts';
 import {TerrainCoverage, type TerrainCoverageIndex} from './terrain_coverage.ts';
 import {mercatorWorldCoordinateHelper} from '../geo/mercator_coordinate.ts';
+import {featureGeometryHelper} from '../geo/projection/tile_warp.ts';
 
 import type {LngLat} from '../geo/lng_lat.ts';
 import type {Tile} from '../tile/tile.ts';
@@ -176,7 +177,7 @@ export class Terrain {
         this.meshSize = 128;
         this._demMatrixCache = new Map();
         this._minMaxElevationCache = new Map();
-        this.coverage = new TerrainCoverage(this.tileManager, this.exaggeration, () => this._worldCoordinateHelper);
+        this.coverage = new TerrainCoverage(this.tileManager, this.exaggeration, () => this._worldCoordinateHelper, getWorldCoordinateHelper);
     }
 
     destroy(): void {
@@ -507,10 +508,11 @@ export class Terrain {
     }
 
     /**
-     * The lng/lat to world mapping of the map's projection.
+     * The lng/lat to world mapping of the grid the terrain's tiles are cut in, in which every lookup of a place is
+     * made: the map projection's, or mercator's on a plane that the DEM source's mercator tiles are warped onto.
      */
     private get _worldCoordinateHelper(): WorldCoordinateHelper {
-        return this._getWorldCoordinateHelper();
+        return featureGeometryHelper(this.tileManager.tileManager.getSource?.()?.tileGrid, this._getWorldCoordinateHelper());
     }
 
     _getOverscaledTileIDFromLngLatZoom(lnglat: LngLat, zoom: number): { tileID: OverscaledTileID; worldX: number; worldY: number} {

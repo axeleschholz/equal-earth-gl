@@ -40,6 +40,12 @@ export type TerrainCoverageIndex = {
     samplerPerTile: Map<string, TerrainElevationSampler | null>;
     minElevation: number;
     maxElevation: number;
+    /**
+     * Takes a position on the map's plane to the grid the terrain's tiles are cut in, where the two differ: on a
+     * plane that the terrain's mercator tiles are warped onto. `null` for a position beside the world. The array it
+     * returns is reused by the next call.
+     */
+    planeToGrid?: (x: number, y: number) => [number, number] | null;
 };
 
 const NOT_COVERED: TerrainSample = {covered: false, demLoaded: false, elevation: 0};
@@ -50,7 +56,11 @@ const NOT_COVERED: TerrainSample = {covered: false, demLoaded: false, elevation:
  * tile's DEM data, a loaded parent's where the tile's own has not loaded, or only the tiles' own.
  * @param tileManager - the terrain source's tiles, drawn and loaded
  * @param exaggeration - the terrain's exaggeration, which every sampled elevation includes
- * @param getWorldCoordinateHelper - the lng/lat to world mapping of the map's projection, mercator by default
+ * @param getWorldCoordinateHelper - the lng/lat to world mapping of the grid the terrain's tiles are cut in, mercator
+ * by default
+ * @param getPlaneHelper - the lng/lat to world mapping of the map's projection, when it is another: the terrain is then
+ * drawn on a plane its tiles are warped onto, in one world, and positions on that plane are taken to the grid to be
+ * sampled, see {@link TerrainCoverageIndex.planeToGrid}
  */
 export class TerrainCoverage {
     private _samplerCache = new Map<string, TerrainElevationSampler>();
@@ -61,7 +71,8 @@ export class TerrainCoverage {
     constructor(
         private readonly tileManager: TerrainTileManager,
         private readonly exaggeration: number,
-        private readonly getWorldCoordinateHelper: () => WorldCoordinateHelper = () => mercatorWorldCoordinateHelper
+        private readonly getWorldCoordinateHelper: () => WorldCoordinateHelper = () => mercatorWorldCoordinateHelper,
+        private readonly getPlaneHelper: () => WorldCoordinateHelper = getWorldCoordinateHelper
     ) {}
 
     /** Drops the samplers and both indexes. Missing DEM data is never cached, so a later sample can retry. */
@@ -94,7 +105,7 @@ export class TerrainCoverage {
         if (!index) return undefined;
         const worldCoordinateHelper = this.getWorldCoordinateHelper();
         const {x, y} = worldCoordinateHelper.worldFromLngLat(lnglat.lng, lnglat.lat);
-        const sample = sampleAt(index, this.exaggeration, x, y, worldCoordinateHelper.wraps);
+        const sample = sampleGridAt(index, this.exaggeration, x, y, worldCoordinateHelper.wraps && !index.planeToGrid);
         return sample.demLoaded ? sample.elevation : undefined;
     }
 
@@ -141,9 +152,11 @@ export class TerrainCoverage {
         let minElevation = 0;
         let maxElevation = 0;
 
+        const planeToGrid = this._getPlaneToGrid();
         for (const tile of tileManager.getRenderableTiles()) {
             if (!tile) continue;
-            const {canonical, wrap} = tile.tileID;
+            const {canonical} = tile.tileID;
+            const wrap = planeToGrid ? 0 : tile.tileID.wrap;
             if (!zooms.includes(canonical.z)) zooms.push(canonical.z);
             const sampler = ownDemOnly && !tileManager.getSourceTile(tile.tileID)?.dem ? null : this.getSampler(tile.tileID);
             samplerPerTile.set(`${wrap}/${canonical.z}/${canonical.x}/${canonical.y}`, sampler);
@@ -154,16 +167,44 @@ export class TerrainCoverage {
 
         if (samplerPerTile.size === 0) return null;
         zooms.sort((a, b) => b - a);
-        return {zooms, samplerPerTile, minElevation: minElevation - BRACKET_PADDING_M, maxElevation: maxElevation + BRACKET_PADDING_M};
+        return {zooms, samplerPerTile, minElevation: minElevation - BRACKET_PADDING_M, maxElevation: maxElevation + BRACKET_PADDING_M, planeToGrid};
+    }
+
+    /**
+     * {@link TerrainCoverageIndex.planeToGrid} for the map's plane as it is now: through lng/lat, from the plane to
+     * the grid. The grid has one copy of each tile on such a plane, whatever wrap the tile is drawn with.
+     */
+    private _getPlaneToGrid(): TerrainCoverageIndex['planeToGrid'] {
+        const plane = this.getPlaneHelper();
+        const grid = this.getWorldCoordinateHelper();
+        if (plane === grid) return undefined;
+        const out: [number, number] = [0, 0];
+        return (x: number, y: number) => {
+            if (!plane.hasLngLat(x, y)) return null;
+            const lngLat = plane.lngLatFromWorld(x, y);
+            const onGrid = grid.worldFromLngLat(lngLat.lng, lngLat.lat);
+            out[0] = onGrid.x - Math.floor(onGrid.x);
+            out[1] = onGrid.y;
+            return out;
+        };
     }
 }
 
 /**
- * Elevation of the rendered terrain surface at a world position, and whether it is covered at all.
+ * Elevation of the rendered terrain surface at a position on the map's plane, and whether it is covered at all.
  * A covered tile whose DEM has not loaded yet is flat at zero, which is what the terrain mesh renders.
  * @param wraps - whether x wraps into world copies (mercator); a planar CRS has no terrain outside its world square
  */
 export function sampleAt(index: TerrainCoverageIndex, exaggeration: number, worldX: number, worldY: number, wraps: boolean): TerrainSample {
+    if (!index.planeToGrid) return sampleGridAt(index, exaggeration, worldX, worldY, wraps);
+    const onGrid = index.planeToGrid(worldX, worldY);
+    return onGrid ? sampleGridAt(index, exaggeration, onGrid[0], onGrid[1], false) : NOT_COVERED;
+}
+
+/**
+ * {@link sampleAt} for a position in the grid the terrain's tiles are cut in.
+ */
+function sampleGridAt(index: TerrainCoverageIndex, exaggeration: number, worldX: number, worldY: number, wraps: boolean): TerrainSample {
     if (worldY < 0 || worldY >= 1) return NOT_COVERED;
     if (!wraps && (worldX < 0 || worldX >= 1)) return NOT_COVERED;
     const wrap = wraps ? Math.floor(worldX) : 0;

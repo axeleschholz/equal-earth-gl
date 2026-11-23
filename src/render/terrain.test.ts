@@ -15,6 +15,7 @@ import {projectCamera} from '../camera/project_camera.ts';
 import {createNullGL} from '../util/test/null_gl.ts';
 import {createDEM, createDEMTerrain, createPainter, createRasterDEMTileManager, createTestCamera} from '../util/test/util.ts';
 import {CRSWorldCoordinateHelper, identityCrs} from '../geo/projection/crs.ts';
+import {equalEarthWorldCoordinateHelper} from '../geo/projection/equal_earth_world.ts';
 
 import type {TileManager} from '../tile/tile_manager.ts';
 import type {TerrainSpecification} from '@maplibre/maplibre-gl-style-spec';
@@ -503,6 +504,43 @@ describe('Terrain in a planar projection', () => {
 
         expect(terrain.getSkirtLength(0)).toBe(36);
         expect(terrain.getSkirtLength(1)).toBe(18);
+    });
+});
+
+describe('Terrain on a plane that mercator tiles are warped onto', () => {
+    function createWarpedTerrain(tileIDs: OverscaledTileID[]) {
+        const terrain = new Terrain(createPainter(), createRasterDEMTileManager(), {source: 'dem'}, 'auto', () => equalEarthWorldCoordinateHelper);
+        terrain.tileManager.getRenderableTiles = () => tileIDs.map(tileID => ({tileID}) as Tile);
+        return terrain;
+    }
+
+    test('looks a lng/lat up in the mercator tile that holds it, not in a tile of the plane', () => {
+        const terrain = createWarpedTerrain([]);
+        const getElevation = vi.spyOn(terrain, 'getElevation').mockReturnValue(0);
+
+        terrain.getElevationForLngLatZoom(new LngLat(20, 70), 3);
+
+        expect(getElevation).toHaveBeenCalledWith(expect.objectContaining({canonical: expect.objectContaining({z: 3, x: 4, y: 1})}), expect.any(Number), expect.any(Number), EXTENT);
+    });
+
+    test('samples the drawn surface at a position on the plane in the mercator tile drawn there, whatever its wrap', () => {
+        const terrain = createWarpedTerrain([new OverscaledTileID(3, -1, 3, 4, 1)]);
+        terrain.tileManager.getSourceTile = (tileID) => ({tileID, dem: createDEM(() => 100)} as any as Tile);
+        const onPlane = equalEarthWorldCoordinateHelper.worldFromLngLat(20, 70);
+        const elsewhere = equalEarthWorldCoordinateHelper.worldFromLngLat(-100, 70);
+
+        const index = terrain.getCoverageIndex();
+
+        expect(sampleAt(index, 1, onPlane.x, onPlane.y, false)).toEqual({covered: true, demLoaded: true, elevation: expect.closeTo(100, 6)});
+        expect(sampleAt(index, 1, elsewhere.x, elsewhere.y, false).covered).toBe(false);
+        expect(sampleAt(index, 1, 0.01, 0.3, false).covered).toBe(false);
+        expect(terrain.getDrawnElevationForLngLat(new LngLat(20, 70))).toBeCloseTo(100, 6);
+    });
+
+    test('keeps the skirt of mercator tiles', () => {
+        const mercatorTerrain = new Terrain(createPainter(), createRasterDEMTileManager(), {source: 'dem'});
+
+        expect(createWarpedTerrain([]).getSkirtLength(3)).toBe(mercatorTerrain.getSkirtLength(3));
     });
 });
 
