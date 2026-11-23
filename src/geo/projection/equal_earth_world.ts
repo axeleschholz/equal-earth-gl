@@ -2,7 +2,7 @@ import {LngLat} from '../lng_lat.ts';
 import {MercatorCoordinate} from '../mercator_coordinate.ts';
 import {clamp} from '../../util/util.ts';
 import {EQUAL_EARTH_HALF_HEIGHT, EQUAL_EARTH_HALF_WIDTH, equalEarthForward, equalEarthInverse} from './equal_earth_math.ts';
-import {getEqualEarthTileWarp} from './equal_earth_tile_warp.ts';
+import {getEqualEarthTileWarp, normalizeCentralMeridian} from './equal_earth_tile_warp.ts';
 
 import type {WorldCoordinateHelper} from '../world_types.ts';
 import type {TileMatrixSet} from './tile_matrix_set.ts';
@@ -91,9 +91,14 @@ export class EqualEarthWorldCoordinateHelper implements WorldCoordinateHelper {
         return new LngLat(this._fromCentralMeridian(clamp(crsX / halfWidthAtLat, -1, 1) * 180), lat);
     }
 
-    /** A longitude counted from the central meridian as one counted from Greenwich, in -180..180. */
+    /**
+     * A longitude counted from the central meridian as one counted from Greenwich, in -180..180. The two edges of
+     * the world are the same meridian, so a longitude on an edge is left half a turn from the central meridian on
+     * its own side, outside that range if need be, which {@link worldFromLngLat} takes back to the same edge.
+     */
     private _fromCentralMeridian(lng: number): number {
         if (this.centralMeridian === 0) return lng;
+        if (Math.abs(Math.abs(lng) - 180) < EDGE_ROUNDING) return this.centralMeridian + Math.sign(lng) * 180;
         lng += this.centralMeridian;
         if (lng > 180) return lng - 360;
         if (lng < -180) return lng + 360;
@@ -118,9 +123,11 @@ const helpers = new Map<number, EqualEarthWorldCoordinateHelper>();
 /**
  * @internal
  * The Equal Earth world mapping whose central meridian is the given longitude. It holds no map's state, so every
- * map with that central meridian shares it.
+ * map with that central meridian shares it. See {@link normalizeCentralMeridian} for the longitudes that are one
+ * plane.
  */
 export function getEqualEarthWorldCoordinateHelper(centralMeridian: number): EqualEarthWorldCoordinateHelper {
+    centralMeridian = normalizeCentralMeridian(centralMeridian);
     let helper = helpers.get(centralMeridian);
     if (!helper) {
         helper = new EqualEarthWorldCoordinateHelper(centralMeridian);

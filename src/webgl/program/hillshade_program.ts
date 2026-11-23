@@ -10,7 +10,7 @@ import {
     Uniform4f
 } from '../uniform_binding.ts';
 import {EXTENT} from '../../data/extent.ts';
-import {featureGeometryHelper} from '../../geo/projection/tile_warp.ts';
+import {featureGeometryHelper, resolveTileGrid, type TileGrid} from '../../geo/projection/tile_warp.ts';
 
 import type {Context} from '../../webgl/context.ts';
 import type {UniformValues, UniformLocations} from '../uniform_binding.ts';
@@ -100,7 +100,7 @@ const hillshadeUniformValues = (
     }
     return {
         'u_image': 0,
-        'u_latrange': getTileLatRange(worldCoordinateHelper, tile.tileID),
+        'u_latrange': getTileLatRange(worldCoordinateHelper, tile.tileID, tile.tileGrid),
         'u_exaggeration': layer.paint.get('hillshade-exaggeration'),
         'u_altitudes': illumination.altitudeRadians,
         'u_azimuths': illumination.directionRadians,
@@ -145,13 +145,15 @@ function getLog2WorldWidth(worldCoordinateHelper: WorldCoordinateHelper): number
  * with latitude; any other plane is rendered in its own units and gets `[0, 0]`: `cos(0)` is 1 and the shader
  * applies no correction. The tile's rows are rows of the mercator grid whatever plane those tiles are drawn on, so
  * their latitudes come from the world mapping of that grid.
+ *
+ * @param tileGrid - the grid of the tile's source when it has its own, see `Tile.tileGrid`
  */
-function getTileLatRange(worldCoordinateHelper: WorldCoordinateHelper, tileID: OverscaledTileID): [number, number] {
-    if (worldCoordinateHelper.sourceTileGrid !== 'mercator') return [0, 0];
+function getTileLatRange(worldCoordinateHelper: WorldCoordinateHelper, tileID: OverscaledTileID, tileGrid?: TileGrid): [number, number] {
+    if (resolveTileGrid(tileGrid, worldCoordinateHelper) !== 'mercator') return [0, 0];
     // for scaling the magnitude of a points slope by its latitude
     const tilesAtZoom = Math.pow(2, tileID.canonical.z);
     const y = tileID.canonical.y;
-    const tileGridHelper = featureGeometryHelper(undefined, worldCoordinateHelper);
+    const tileGridHelper = featureGeometryHelper(tileGrid, worldCoordinateHelper);
     return [
         tileGridHelper.lngLatFromWorld(0, y / tilesAtZoom).lat,
         tileGridHelper.lngLatFromWorld(0, (y + 1) / tilesAtZoom).lat];

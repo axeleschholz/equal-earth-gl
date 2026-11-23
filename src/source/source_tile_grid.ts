@@ -51,7 +51,7 @@ export function resolveSourceTileGrid(option: string | undefined, plane: Pick<Wo
 export function sourceGridHasTile(option: string | undefined, plane: WorldCoordinateHelper, tile: {x: number; y: number; z: number}): boolean {
     const grid = resolveSourceTileGrid(option, plane);
     if (grid === null) {
-        warnOnce(`A source with tileGrid "${option}" cannot be drawn in the "${plane.name}" projection as it is set up, and is left out.`);
+        warnOnce(`A source with tileGrid "${option}" cannot be drawn in the map's projection as it is set up, and is left out.`);
         return false;
     }
     if (grid !== 'plane') return true;

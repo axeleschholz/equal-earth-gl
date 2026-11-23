@@ -143,6 +143,7 @@ class EqualEarthTileWarp implements TileWarp {
      */
     readonly expansionMinZoom: number = 3;
     readonly copies: readonly number[];
+    readonly worldWest: number;
     /**
      * The mercator x of the world's east edge, the meridian opposite the central one, in 0..1 and 1 when the edge
      * is the antimeridian. The world shows mercator x from one less than this up to it.
@@ -154,6 +155,7 @@ class EqualEarthTileWarp implements TileWarp {
         const edge = ((centralMeridian / 360) % 1 + 1) % 1;
         this._edge = edge === 0 ? 1 : edge;
         this.copies = this._edge === 1 ? [0] : [0, -1];
+        this.worldWest = this._edge - 1;
     }
 
     /** Where the west edge of a tile copy lies across the world: 0 on the world's west edge, 1 on its east edge. */
@@ -248,6 +250,17 @@ class EqualEarthTileWarp implements TileWarp {
     }
 }
 
+/**
+ * @internal
+ * A central meridian as the one longitude in -180..180 that names its plane: a longitude outside that range is
+ * brought into it, -180 is 180, which is the same plane, and anything that is not a finite number is 0.
+ */
+export function normalizeCentralMeridian(centralMeridian: number): number {
+    if (!Number.isFinite(centralMeridian)) return 0;
+    const wrapped = ((centralMeridian + 180) % 360 + 360) % 360 - 180;
+    return wrapped === -180 ? 180 : wrapped;
+}
+
 const warps = new Map<number, TileWarp>();
 
 /**
@@ -256,6 +269,7 @@ const warps = new Map<number, TileWarp>();
  * map's state, so every map with that central meridian shares it.
  */
 export function getEqualEarthTileWarp(centralMeridian: number): TileWarp {
+    centralMeridian = normalizeCentralMeridian(centralMeridian);
     let warp = warps.get(centralMeridian);
     if (!warp) {
         warp = new EqualEarthTileWarp(centralMeridian);

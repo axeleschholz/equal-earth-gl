@@ -29,12 +29,6 @@ export function featureGeometryHelper(sourceTileGrid: TileGrid | undefined, worl
 }
 
 /**
- * @internal
- * How the tiles of the mercator grid lie on a world plane that is not mercator: a tile's square becomes a curved
- * shape there, and everything that draws, selects or queries such tiles goes through this mapping. The shaders
- * of the projection compute the same mapping on the GPU.
- */
-/**
  * A tile of the mercator grid as a {@link TileWarp} takes it. `wrap` tells apart the copies of a tile that the
  * edge of the world runs through, see {@link TileWarp.copies}, and is 0 when left out.
  */
@@ -48,7 +42,19 @@ export function tileLiesInWorld(window: [number, number]): boolean {
     return window[1] > 0 && window[0] < EXTENT;
 }
 
+/**
+ * @internal
+ * How the tiles of the mercator grid lie on a world plane that is not mercator: a tile's square becomes a curved
+ * shape there, and everything that draws, selects or queries such tiles goes through this mapping. The shaders
+ * of the projection compute the same mapping on the GPU.
+ */
 export interface TileWarp {
+    /**
+     * The mercator x of the world's west edge, counted so that the world runs from it one unit eastward without a
+     * break: 0 where the world ends at the antimeridian, and below 0 otherwise, by the part of the world that lies
+     * east of the antimeridian. A tile copy with `wrap` w holds the mercator x of its tile plus w on this count.
+     */
+    readonly worldWest: number;
     /**
      * The values of `wrap` that tiles are drawn with. The world ends at the meridian opposite its central one,
      * which is the antimeridian only when the central meridian is 0. Otherwise the tiles on one side of the

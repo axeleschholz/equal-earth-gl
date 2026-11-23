@@ -91,6 +91,16 @@ describe('queries and shading of mercator tiles in equal-earth', () => {
     });
 });
 
+describe('hillshade of tiles cut in the Equal Earth grid', () => {
+    test('is not scaled by latitude, since a plane tile is the same size at every latitude', async () => {
+        const {getTileLatRange} = await import('../../webgl/program/hillshade_program.ts');
+        const {equalEarthWorldCoordinateHelper} = await import('../../geo/projection/equal_earth_world.ts');
+        const {OverscaledTileID} = await import('../../tile/tile_id.ts');
+
+        expect(getTileLatRange(equalEarthWorldCoordinateHelper, new OverscaledTileID(3, 0, 3, 4, 2), 'plane')).toEqual([0, 0]);
+    });
+});
+
 describe('controls on a map in equal-earth', () => {
     test('the scale control shows the distance across its bar at the middle of the map', async () => {
         const {ScaleControl} = await import('../control/scale_control.ts');

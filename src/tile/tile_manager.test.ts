@@ -9,7 +9,7 @@ import {getCameraMath} from '../camera/camera_math_factory.ts';
 import {ErrorEvent, Event, Evented} from '../util/evented.ts';
 import {extend} from '../util/util.ts';
 import {TileBounds} from './tile_bounds.ts';
-import {mercatorWorldCoordinateHelper} from '../geo/mercator_coordinate.ts';
+import {MercatorCoordinate, mercatorWorldCoordinateHelper, mercatorXfromLng, mercatorYfromLat} from '../geo/mercator_coordinate.ts';
 import {beforeMapTest, createMap as globalCreateMap, createPolarStereographicCrs, createTestCamera, sleep, waitForEvent} from '../util/test/util.ts';
 import {now, restoreNow, setNow} from '../util/time_control.ts';
 import {createCameraContext} from '../camera/camera_context.ts';
@@ -3005,7 +3005,7 @@ describe('TileManager.tilesIn on a plane that mercator tiles are warped onto', (
         }
     });
 
-    test('gives both copies of a tile that the edge of a re-centred world runs through the query point, each with its own wrap', async () => {
+    test('gives the query point to the copy that draws it, of a tile that the edge of a re-centred world runs through', async () => {
         const {getEqualEarthWorldCoordinateHelper} = await import('../geo/projection/equal_earth_world.ts');
         const pacific = getEqualEarthWorldCoordinateHelper(150);
         const {projectedCamera} = createTestCamera({width: 512, height: 512, zoom: 0, center: [150, 0]}, {projection: 'mercator', worldCoordinateHelper: pacific});
@@ -3023,11 +3023,70 @@ describe('TileManager.tilesIn on a plane that mercator tiles are warped onto', (
         const results = tileManager.tilesIn([queryPoint, ...around], 1, false, projectedCamera, pacific)
             .filter(({queryGeometry}) => queryGeometry[0].x >= 0 && queryGeometry[0].x <= 8192);
 
-        expect(results.map(result => result.tileID.wrap).sort()).toEqual([-1, 0]);
+        expect(results.map(result => result.tileID.wrap)).toEqual([-1]);
         const westEnd = results.find(result => result.tileID.wrap === -1);
         const [x, y] = pacific.mercatorTileWarp.warp({x: 0, y: 0, z: 0, wrap: -1}, westEnd.queryGeometry[0].x, westEnd.queryGeometry[0].y, [0, 0]);
         const drawn = getCameraMath(projectedCamera).locationToScreenPoint(projectedCamera, pacific, pacific.lngLatFromWorld(x, y));
         expect(Math.hypot(drawn.x - queryPoint.x, drawn.y - queryPoint.y)).toBeLessThan(0.5);
+    });
+
+    test('gives a wide box across the antimeridian of a re-centred world a polygon that holds what the box holds', async () => {
+        const {getEqualEarthWorldCoordinateHelper} = await import('../geo/projection/equal_earth_world.ts');
+        const pacific = getEqualEarthWorldCoordinateHelper(150);
+        const {projectedCamera} = createTestCamera({width: 512, height: 512, zoom: 0, center: [150, 0]}, {projection: 'mercator', worldCoordinateHelper: pacific});
+        const tileManager = createTileManager({maxzoom: 0});
+        tileManager._source.loadTile = async (tile) => {
+            tile.state = 'loaded';
+        };
+        const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
+        tileManager.onAdd(undefined);
+        await dataPromise;
+        tileManager.update(projectedCamera, pacific);
+        const box = [new Point(156, 200), new Point(456, 200), new Point(456, 300), new Point(156, 300), new Point(156, 200)];
+
+        const results = tileManager.tilesIn(box, 1, false, projectedCamera, pacific);
+
+        const holds = (lng: number, lat: number) => results.some(({tileID, queryGeometry}) => {
+            const point = tileID.getTilePoint(new MercatorCoordinate(mercatorXfromLng(lng) + tileID.wrap, mercatorYfromLat(lat)));
+            let inside = false;
+            for (let i = 0, j = queryGeometry.length - 1; i < queryGeometry.length; j = i++) {
+                const a = queryGeometry[i];
+                const b = queryGeometry[j];
+                if ((a.y > point.y) !== (b.y > point.y) && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+            }
+            return inside;
+        });
+        expect(holds(150, 0)).toBe(true);
+        expect(holds(170, 0)).toBe(true);
+        expect(holds(-170, 0)).toBe(true);
+        expect(holds(-150, 0)).toBe(true);
+        expect(holds(20, 0)).toBe(false);
+        expect(holds(-60, 0)).toBe(false);
+    });
+
+    test('gives the whole viewport of a re-centred world a polygon that holds the world', async () => {
+        const {getEqualEarthWorldCoordinateHelper} = await import('../geo/projection/equal_earth_world.ts');
+        const pacific = getEqualEarthWorldCoordinateHelper(150);
+        const {projectedCamera} = createTestCamera({width: 512, height: 512, zoom: 0, center: [150, 0]}, {projection: 'mercator', worldCoordinateHelper: pacific});
+        const tileManager = createTileManager({maxzoom: 0});
+        tileManager._source.loadTile = async (tile) => {
+            tile.state = 'loaded';
+        };
+        const dataPromise = waitForEvent(tileManager, 'data', e => e.sourceDataType === 'metadata');
+        tileManager.onAdd(undefined);
+        await dataPromise;
+        tileManager.update(projectedCamera, pacific);
+        const box = [new Point(0, 0), new Point(512, 0), new Point(512, 512), new Point(0, 512), new Point(0, 0)];
+
+        const results = tileManager.tilesIn(box, 1, false, projectedCamera, pacific);
+
+        expect(results.map(result => result.tileID.wrap).sort()).toEqual([-1, 0]);
+        for (const {tileID, queryGeometry} of results) {
+            const xs = queryGeometry.map(point => point.x);
+            const [west, east] = pacific.mercatorTileWarp.window({x: 0, y: 0, z: 0, wrap: tileID.wrap});
+            expect(Math.min(...xs), `wrap ${tileID.wrap}`).toBeLessThanOrEqual(Math.max(0, west) + 1);
+            expect(Math.max(...xs), `wrap ${tileID.wrap}`).toBeGreaterThanOrEqual(Math.min(8192, east) - 1);
+        }
     });
 
     test('splits the long sides of a box, whose image in a mercator tile is curved', async () => {

@@ -131,4 +131,19 @@ describe('getEqualEarthWorldCoordinateHelper', () => {
             expect(lngLat.lat).toBeCloseTo(lat, 8);
         }
     });
+
+    test('keeps each edge of a re-centred world on its own side through lng/lat and back', () => {
+        for (const meridian of [150, -90, 180, -180, 10.3]) {
+            const plane = getEqualEarthWorldCoordinateHelper(meridian);
+            for (const [x, expected] of [[1, 1], [0, 0], [1 - 1e-13, 1], [1e-13, 0], [0.999, 0.999], [0.001, 0.001]]) {
+                const lngLat = plane.lngLatFromWorld(x, 0.5);
+
+                expect(plane.worldFromLngLat(lngLat.lng, lngLat.lat).x, `meridian ${meridian}, x ${x}`).toBeCloseTo(expected, 9);
+            }
+        }
+    });
+
+    test('is one plane for the central meridians 180 and -180', () => {
+        expect(getEqualEarthWorldCoordinateHelper(-180)).toBe(getEqualEarthWorldCoordinateHelper(180));
+    });
 });

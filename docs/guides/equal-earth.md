@@ -67,10 +67,12 @@ A style can carry it as well, as `"projection": {"type": "equal-earth", "central
 
 Sources do not change for this either. A Web Mercator tile that the edge of the world runs through is drawn twice, one part at each end of the world, and GeoJSON is cut at the new edge instead of at the antimeridian.
 
+The two edges of such a world are one meridian. When the camera's center is exactly on an edge, `map.getCenter()` gives its longitude half a turn from the central meridian on that side, which can be outside -180 to 180, such as 330 for the east edge of a world centered on 150; `getCenter().wrap()` brings it back.
+
 Limits with a central meridian other than 0:
 
 - Tile sources cut in the Equal Earth grid, described next, are not drawn, since their tiles are cut for a world centered on Greenwich.
-- A custom layer that draws the whole world with `defaultProjectionData` gets the part of the world west of the antimeridian only, and nothing cuts its drawing at the edge of the world. Draw tile by tile instead: `args.getProjectionData({tileID})` takes a `wrap` of 0 for the part of a tile west of the world's edge and -1 for the part east of it.
+- A custom layer that draws the whole world with `defaultProjectionData` has only the part from the antimeridian east to the world's edge in its place. The rest is drawn beside the world, because nothing cuts a custom layer's drawing at the edge. Draw tile by tile instead: `args.getProjectionData({tileID})` takes a `wrap` of 0 for the part of a tile west of the world's edge and -1 for the part east of it.
 
 ## Tile sources cut in the Equal Earth grid
 

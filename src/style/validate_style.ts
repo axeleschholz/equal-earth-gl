@@ -32,7 +32,7 @@ const specValidateStyle = (validateStyleMin as unknown as ValidateStyle);
 /** The source types that take the `tileGrid` option, see `TileGridSourceOption`. */
 const TILE_GRID_SOURCE_TYPES: ReadonlySet<unknown> = new Set(['vector', 'raster', 'raster-dem']);
 
-/** The projection's central meridian, see `EqualEarthProjectionOptions`. */
+/** The projection's central meridian, see `CentralMeridianProjectionOption`. */
 const CENTRAL_MERIDIAN = 'central-meridian';
 
 function hasTileGrid(source: any): boolean {

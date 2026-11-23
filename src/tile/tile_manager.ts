@@ -931,10 +931,10 @@ export class TileManager extends Evented<SourceEventType> {
      * lies beside the world altogether finds no tiles. The scale each of these tiles gets, which turns pixels into
      * tile units for the tolerance around features, is that of the direction the warp shrinks the tile most in at
      * the middle of the query, so that a feature can be hit wherever it is drawn. Mercator tiles end at 85.051
-     * degrees of latitude, and a point of the geometry beyond that is taken to be on that edge. The geometry
-     * is in the one mercator square whatever the tile's wrap, which only says at which end of a re-centred world
-     * the tile is drawn, see `TileWarp.copies`. A tile that the edge of the world runs through is there twice: each
-     * copy gets the geometry and keeps its own wrap, and a feature both find is reported once.
+     * degrees of latitude, and a point of the geometry beyond that is taken to be on that edge. The mercator
+     * x of the geometry is counted from the world's west edge on, see `TileWarp.worldWest`, so that it has no break
+     * where the antimeridian crosses a re-centred world, and each tile copy takes from it the part it draws, see
+     * `TileWarp.copies`.
      */
     tilesIn(pointQueryGeometry: Point[], maxPitchScaleFactor: number, has3DLayer: boolean, projectedCamera: ProjectedCamera | undefined = this.projectedCamera, worldCoordinateHelper: WorldCoordinateHelper | undefined = this.worldCoordinateHelper): TileResult[] {
         const tileResults: TileResult[] = [];
@@ -956,13 +956,19 @@ export class TileManager extends Evented<SourceEventType> {
             pointQueryGeometry = splitLongEdges(pointQueryGeometry, MAX_WARPED_QUERY_EDGE);
             cameraPointQueryGeometry = has3DLayer ? splitLongEdges(cameraPointQueryGeometry, MAX_WARPED_QUERY_EDGE) : pointQueryGeometry;
             const toPlane = project;
+            const centralMeridian = worldCoordinateHelper.centralMeridian ?? 0;
             project = (point: Point) => {
                 const onPlane = toPlane(point);
                 const lngLat = worldCoordinateHelper.lngLatFromWorld(onPlane.x, onPlane.y);
-                return mercatorWorldCoordinateHelper.worldFromLngLat(lngLat.lng, clamp(lngLat.lat, -MAX_VALID_LATITUDE, MAX_VALID_LATITUDE));
+                const inMercator = mercatorWorldCoordinateHelper.worldFromLngLat(0, clamp(lngLat.lat, -MAX_VALID_LATITUDE, MAX_VALID_LATITUDE));
+                let fromCentralMeridian = lngLat.lng - centralMeridian;
+                if (fromCentralMeridian > 180) fromCentralMeridian -= 360;
+                if (fromCentralMeridian < -180) fromCentralMeridian += 360;
+                inMercator.x = warp.worldWest + fromCentralMeridian / 360 + 0.5;
+                return inMercator;
             };
         }
-        const singleWorld = !allowWorldCopies || !!warp;
+        const singleWorld = !allowWorldCopies && !warp;
         const queryGeometry = this.transformBbox(pointQueryGeometry, project, singleWorld);
         const cameraQueryGeometry = this.transformBbox(cameraPointQueryGeometry, project, singleWorld);
 
@@ -996,7 +1002,7 @@ export class TileManager extends Evented<SourceEventType> {
 
                     tileResults.push({
                         tile,
-                        tileID: singleWorld ? tileID.unwrapTo(warp ? tile.tileID.wrap : 0) : tileID,
+                        tileID: singleWorld ? tileID.unwrapTo(0) : tileID,
                         queryGeometry: tileSpaceQueryGeometry,
                         cameraQueryGeometry: tileSpaceCameraQueryGeometry,
                         scale
