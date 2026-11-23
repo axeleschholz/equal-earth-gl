@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Display a Pacific-centered map in Equal Earth</title>
+    <meta property="og:description" content="Center the Equal Earth world on any meridian with the projection's central-meridian option, and move it at runtime." />
+    <meta property="og:category" content="Vector & GeoJSON" />
+    <meta property="og:created" content="2026-11-23" />
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel='stylesheet' href='../../dist/maplibre-gl.css' />
+    <style>
+        body { margin: 0; padding: 0; background: #f4f4f1; }
+        html, body, #map { height: 100%; }
+        #meridian { position: absolute; top: 10px; left: 10px; padding: 8px 10px; background: rgba(255, 255, 255, 0.9); font: 13px sans-serif; border-radius: 4px; }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<label id="meridian">Central meridian: <output id="value">150</output>°<br>
+    <input id="slider" type="range" min="-180" max="180" step="10" value="150">
+</label>
+<script type="module">
+    import * as maplibregl from '../../dist/maplibre-gl-dev.mjs';
+
+    // An unmodified style of Web Mercator vector tiles. The world is drawn around the central meridian,
+    // and ends at the meridian opposite it.
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: 'https://tiles.openfreemap.org/styles/bright',
+        center: [150, 0],
+        zoom: 1.2
+    });
+    map.addControl(new maplibregl.NavigationControl());
+
+    function setCentralMeridian(longitude) {
+        map.setProjection({'type': 'equal-earth', 'central-meridian': longitude});
+        map.setCenter([longitude, 0]);
+    }
+
+    map.on('style.load', () => setCentralMeridian(150));
+
+    document.getElementById('slider').addEventListener('input', (e) => {
+        const longitude = Number(e.target.value);
+        document.getElementById('value').textContent = String(longitude);
+        setCentralMeridian(longitude);
+    });
+</script>
+</body>
+</html>

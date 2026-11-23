@@ -28,7 +28,7 @@ Web Mercator tiles hold no data beyond 85.051° of latitude. The strip from ther
 
 ## What is different from a Mercator map
 
-- **One world.** There are no world copies: the map has a left and a right edge at the antimeridian, and `renderWorldCopies` has no effect. A longitude past the antimeridian is the same place inside the world, so a marker at 200° is drawn at -160°. Bounds that span the antimeridian, such as 170° to 190°, are fitted as the whole width of the world.
+- **One world.** There are no world copies: the map has a left and a right edge, at the antimeridian unless you [move the central meridian](#the-central-meridian), and `renderWorldCopies` has no effect. A longitude past the edge is the same place inside the world, so a marker at 200° is drawn at -160°. Bounds that span the edge, such as 170° to 190°, are fitted as the whole width of the world.
 - **Around the world.** The area outside the outline of the world is transparent, so the page shows through. The camera's center stays inside the world; the view may extend past it.
 - **Zoom.** At zoom 0 the world is 512 pixels wide, as on a Mercator map, and about 249 pixels high. East-west scale at the equator matches Mercator's at the same zoom. North-south scale there is about 1.35 times Mercator's.
 - **Tile detail.** A Mercator tile covers less of the screen the closer it is to a pole, so the map loads coarser tiles there: it picks the zoom level at which a tile's area on screen is closest to that of a tile on a flat map.
@@ -36,7 +36,7 @@ Web Mercator tiles hold no data beyond 85.051° of latitude. The strip from ther
 
 ## What is drawn
 
-This is stage 3 of 4: every layer type is drawn, from tile sources and from GeoJSON, so an ordinary basemap style renders complete, with its labels and its 3D buildings.
+Every layer type is drawn, from tile sources and from GeoJSON, so an ordinary basemap style renders complete, with its labels and its 3D buildings.
 
 | | From tile sources | From GeoJSON sources |
 |---|---|---|
@@ -46,6 +46,72 @@ This is stage 3 of 4: every layer type is drawn, from tile sources and from GeoJ
 | `fill-extrusion` | Yes | Yes |
 
 Image, video and canvas sources are drawn too: their corners are placed in Web Mercator and the image is warped with the tiles. `queryRenderedFeatures` and `querySourceFeatures` work for every source. The sky and fog are drawn as on any flat map.
+
+## The central meridian
+
+The world is centered on Greenwich unless the projection says otherwise. `central-meridian` is the longitude drawn down the middle of the world, from -180 to 180; the world then ends at the meridian opposite it.
+
+```ts
+const map = new maplibregl.Map({
+    container: 'map',
+    style: 'https://tiles.openfreemap.org/styles/bright',
+    center: [150, 0],
+    zoom: 1
+});
+map.on('style.load', () => {
+    map.setProjection({type: 'equal-earth', 'central-meridian': 150});
+});
+```
+
+A style can carry it as well, as `"projection": {"type": "equal-earth", "central-meridian": 150}`. The style specification does not know the key, so other renderers and the specification's own validator report it; this library validates it itself. `map.getProjection()` returns it, and setting the projection again with another value moves the world at runtime: tiles are redrawn and GeoJSON is tiled again.
+
+Sources do not change for this either. A Web Mercator tile that the edge of the world runs through is drawn twice, one part at each end of the world, and GeoJSON is cut at the new edge instead of at the antimeridian.
+
+Limits with a central meridian other than 0:
+
+- Tile sources cut in the Equal Earth grid, described next, are not drawn, since their tiles are cut for a world centered on Greenwich.
+- A custom layer that draws the whole world with `defaultProjectionData` gets the part of the world west of the antimeridian only, and nothing cuts its drawing at the edge of the world. Draw tile by tile instead: `args.getProjectionData({tileID})` takes a `wrap` of 0 for the part of a tile west of the world's edge and -1 for the part east of it.
+
+## Tile sources cut in the Equal Earth grid
+
+A vector, raster or raster-dem source can serve tiles that are already in Equal Earth, which are drawn as they are, without the warp. Say so with the source's `tileGrid`:
+
+```ts
+map.addSource('population', {
+    type: 'raster',
+    tiles: ['https://example.com/population/{z}/{x}/{y}.png'],
+    tileSize: 256,
+    maxzoom: 6,
+    tileGrid: 'equal-earth'
+});
+```
+
+`tileGrid` is `'mercator'` when left out. Like `central-meridian`, it is not part of the style specification. Sources of both grids can be used in one map and line up with each other.
+
+The `equal-earth` grid is a quad tree over EPSG:8857, the Equal Earth projection of WGS 84 centered on Greenwich:
+
+| | |
+|---|---|
+| CRS | EPSG:8857 |
+| Tile 0/0/0 | the square from -17243959.0622 m to 17243959.0622 m in x and in y |
+| Origin | top left: x = -17243959.0622, y = 17243959.0622; y grows downward, as in XYZ tiles |
+| Zoom levels | each splits a tile in four |
+| Vector tile contents | Mapbox Vector Tiles, in tile coordinates as usual |
+
+The square is as wide as the world. The world is only about half as high, so it is a band across the middle of the square: rows 1 and 2 of zoom 2, rows 2 to 5 of zoom 3, and so on. The tiles above and below the band do not exist, and the map does not ask for them. `{bbox}` in a tile URL is in EPSG:8857 meters for such a source, and in EPSG:3857 meters for a Mercator one.
+
+Tools that take a custom tile matrix set can cut tiles in this grid. With [morecantile](https://developmentseed.org/morecantile/), for example:
+
+```python
+import morecantile
+from pyproj import CRS
+
+half = 17243959.062216945
+equal_earth = morecantile.TileMatrixSet.custom(
+    extent=[-half, -half, half, half], crs=CRS.from_epsg(8857), id="EqualEarthQuad")
+```
+
+Such a source is drawn only in the `equal-earth` projection with its central meridian at 0. In any other projection it is left out, with one console warning, and no tiles are requested.
 
 ## Terrain
 

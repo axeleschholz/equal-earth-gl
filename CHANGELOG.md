@@ -2,6 +2,23 @@
 ### ✨ Features and improvements
 - _...Add new stuff here..._
 
+## 6.18.0-ee.4
+
+### ✨ Features and improvements
+
+- Add the `central-meridian` projection option, which centers the `equal-earth` world on any longitude: `map.setProjection({type: 'equal-earth', 'central-meridian': 150})`
+- Add the `tileGrid: 'equal-earth'` option of vector, raster and raster-dem sources, for tiles cut in the quad grid of EPSG:8857, which are drawn without reprojection beside Web Mercator sources
+- Validate `central-meridian` and `tileGrid` in the library, as the style specification does not know them
+
+### 🐞 Bug fixes
+
+- Fix the `{bbox}` of tile URLs of Web Mercator sources being in Equal Earth meters in `equal-earth`
+
+### Known limits
+
+- Sources with `tileGrid: 'equal-earth'` are not drawn with a `central-meridian` other than 0
+- With a `central-meridian` other than 0, a custom layer that draws the whole world with `defaultProjectionData` gets one part of it; draw tile by tile
+
 ## 6.18.0-ee.3
 
 ### ✨ Features and improvements
