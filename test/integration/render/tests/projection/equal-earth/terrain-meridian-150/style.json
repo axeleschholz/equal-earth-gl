@@ -1,0 +1,169 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "height": 256,
+      "width": 256,
+      "description": "Terrain with GeoJSON draped on it on a world centered on 150 degrees east, far from the central meridian."
+    }
+  },
+  "center": [
+    11.52517,
+    47.34487
+  ],
+  "zoom": 13,
+  "pitch": 60,
+  "sources": {
+    "terrain": {
+      "type": "raster-dem",
+      "tiles": [
+        "local://tiles/terrain-shading/{z}-{x}-{y}.terrain.png"
+      ],
+      "maxzoom": 12,
+      "tileSize": 256
+    },
+    "osm": {
+      "type": "raster",
+      "tiles": [
+        "local://tiles/number/{z}.png"
+      ],
+      "maxzoom": 17,
+      "tileSize": 256
+    },
+    "geojson": {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    11.515,
+                    47.34
+                  ],
+                  [
+                    11.535,
+                    47.34
+                  ],
+                  [
+                    11.535,
+                    47.35
+                  ],
+                  [
+                    11.515,
+                    47.35
+                  ],
+                  [
+                    11.515,
+                    47.34
+                  ]
+                ]
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+              "type": "LineString",
+              "coordinates": [
+                [
+                  11.5,
+                  47.335
+                ],
+                [
+                  11.55,
+                  47.36
+                ]
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                11.52517,
+                47.34487
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "white"
+      }
+    },
+    {
+      "id": "raster",
+      "type": "raster",
+      "source": "osm",
+      "paint": {
+        "raster-opacity": 1.0
+      }
+    },
+    {
+      "id": "box",
+      "type": "fill",
+      "source": "geojson",
+      "filter": [
+        "==",
+        "$type",
+        "Polygon"
+      ],
+      "paint": {
+        "fill-color": "rgba(255,0,0,0.4)"
+      }
+    },
+    {
+      "id": "line",
+      "type": "line",
+      "source": "geojson",
+      "filter": [
+        "==",
+        "$type",
+        "LineString"
+      ],
+      "paint": {
+        "line-color": "#00f",
+        "line-width": 3
+      }
+    },
+    {
+      "id": "pt",
+      "type": "circle",
+      "source": "geojson",
+      "filter": [
+        "==",
+        "$type",
+        "Point"
+      ],
+      "paint": {
+        "circle-radius": 8,
+        "circle-color": "#0a0",
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "#fff"
+      }
+    }
+  ],
+  "terrain": {
+    "source": "terrain",
+    "exaggeration": 2
+  },
+  "projection": {
+    "type": "equal-earth",
+    "central-meridian": 150
+  }
+}
