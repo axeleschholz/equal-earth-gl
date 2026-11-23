@@ -18,7 +18,7 @@ import {ResourceType} from '../util/request_manager.ts';
 import {browser} from '../util/browser.ts';
 import {now} from '../util/time_control.ts';
 import {Dispatcher} from '../util/dispatcher.ts';
-import {validateStyle, validateStyleAndEmit, validateAndEmit, emitValidationErrors, SPEC_SOURCE_TYPES} from './validate_style.ts';
+import {validateStyle, validateStyleAndEmit, validateAndEmit, emitValidationErrors, validateCentralMeridian, SPEC_SOURCE_TYPES} from './validate_style.ts';
 import {type QueryRenderedFeaturesOptions, type QueryRenderedFeaturesOptionsStrict, type QueryRenderedFeaturesResults, type QueryRenderedFeaturesResultsItem, type QuerySourceFeatureOptions, queryRenderedFeatures, queryRenderedSymbols, querySourceFeatures} from '../source/query_features.ts';
 import {TileManager} from '../tile/tile_manager.ts';
 import {derefLayers, emptyStyle, diff as diffStyles, type DiffCommand} from '@maplibre/maplibre-gl-style-spec';
@@ -41,6 +41,7 @@ import {getDefaultProjection} from '../geo/projection/default_projection.ts';
 import {createProjectionFromName} from '../geo/projection/projection_factory.ts';
 
 import type {TileGridSourceOption} from '../source/source_tile_grid.ts';
+import type {CentralMeridianProjectionOption} from '../geo/projection/equal_earth_projection.ts';
 import type {Source} from '../source/source.ts';
 import type {GeoJSONSource} from '../source/geojson_source.ts';
 import type {StyleLayer} from './style_layer.ts';
@@ -515,7 +516,7 @@ export class Style extends Evented<MapEventType> {
         this.stylesheet = nextState;
 
         this.setGlobalState(this.stylesheet.state ?? null);
-        const projectionObjects = createProjectionFromName(this.stylesheet.projection?.type || getDefaultProjection(), this._globalState);
+        const projectionObjects = createProjectionFromName(this.stylesheet.projection?.type || getDefaultProjection(), this._globalState, this.stylesheet.projection as CentralMeridianProjectionOption);
         this.projection = projectionObjects.projection;
 
         for (const id in nextState.sources) {
@@ -1785,22 +1786,25 @@ export class Style extends Evented<MapEventType> {
         this.light.updateTransitions(parameters);
     }
 
-    getProjection(): ProjectionSpecification {
+    getProjection(): ProjectionSpecification & CentralMeridianProjectionOption {
         return this.stylesheet?.projection;
     }
 
-    setProjection(projection?: ProjectionSpecification): void {
+    setProjection(projection?: ProjectionSpecification & CentralMeridianProjectionOption): void {
         this._checkLoaded();
-        const resolvedProjection = projection ?? {type: getDefaultProjection()};
+        if (emitValidationErrors(this, validateCentralMeridian(projection))) return;
+        const resolvedProjection: ProjectionSpecification & CentralMeridianProjectionOption = projection ?? {type: getDefaultProjection()};
+        const previous = this.stylesheet.projection as CentralMeridianProjectionOption | undefined;
         this.stylesheet.projection = projection;
         if (this.projection) {
-            if (this.projection.name === resolvedProjection.type) {
+            const sameMeridian = (previous?.['central-meridian'] ?? 0) === (resolvedProjection['central-meridian'] ?? 0);
+            if (this.projection.name === resolvedProjection.type && sameMeridian) {
                 return;
             }
             this.projection.destroy();
             delete this.projection;
         }
-        this._setProjectionInternal(resolvedProjection.type);
+        this._setProjectionInternal(resolvedProjection.type, resolvedProjection);
     }
 
     getSky(): SkySpecification {
@@ -1842,8 +1846,8 @@ export class Style extends Evented<MapEventType> {
         this.sky.updateTransitions(parameters);
     }
 
-    _setProjectionInternal(name: ProjectionSpecification['type']): void {
-        this._applyProjection(createProjectionFromName(name, this._globalState));
+    _setProjectionInternal(name: ProjectionSpecification['type'], options?: CentralMeridianProjectionOption): void {
+        this._applyProjection(createProjectionFromName(name, this._globalState, options));
     }
 
     /**

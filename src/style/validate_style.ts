@@ -50,7 +50,10 @@ function validateTileGrid(key: string, source: any): ValidationError[] {
     return [new ValidationError(`${key}.tileGrid`, source.tileGrid, `expected one of [${SOURCE_TILE_GRIDS.join(', ')}], ${JSON.stringify(source.tileGrid)} found`)];
 }
 
-function validateCentralMeridian(projection: any): ValidationError[] {
+/**
+ * Validates what a projection object holds beyond the style specification: its `central-meridian`.
+ */
+export function validateCentralMeridian(projection: any): ValidationError[] {
     const value = projection?.[CENTRAL_MERIDIAN];
     if (value === undefined || (typeof value === 'number' && value >= -180 && value <= 180)) return [];
     return [new ValidationError(`projection.${CENTRAL_MERIDIAN}`, value, `a number from -180 to 180 expected, ${JSON.stringify(value)} found`)];

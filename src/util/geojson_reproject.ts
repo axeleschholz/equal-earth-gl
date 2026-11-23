@@ -20,7 +20,7 @@ type LineMapper = (line: GeoJSON.Position[]) => GeoJSON.Position[];
  * What moving GeoJSON onto a plane needs of the plane's world mapping: the mapping itself, the latitudes it places,
  * see `CRSWorldCoordinateHelper.latitudeRange`, and whether lines have to be bent to it.
  */
-export type GeoJSONPlaneHelper = Pick<WorldCoordinateHelper, 'worldFromLngLat' | 'lngLatFromWorld' | 'bendsMercatorLines'> & {
+export type GeoJSONPlaneHelper = Pick<WorldCoordinateHelper, 'worldFromLngLat' | 'lngLatFromWorld' | 'bendsMercatorLines' | 'centralMeridian'> & {
     latitudeRange: [number, number];
 };
 

@@ -73,6 +73,7 @@ import type {CustomLayerProjectionData, ProjectionData, ProjectionDataParams, Pr
 import type {CRS} from './geo/projection/crs.ts';
 import type {TileMatrixSet} from './geo/projection/tile_matrix_set.ts';
 import type {SourceTileGrid, TileGridSourceOption} from './source/source_tile_grid.ts';
+import type {CentralMeridianProjectionOption} from './geo/projection/equal_earth_projection.ts';
 import type {WorkerTileResult} from './source/worker_source.ts';
 import type {Actor, IActor, MessageHandler} from './util/actor.ts';
 import type {Bucket} from './data/bucket.ts';
@@ -372,6 +373,7 @@ export {
     type TileMatrixSet,
     type SourceTileGrid,
     type TileGridSourceOption,
+    type CentralMeridianProjectionOption,
     type GeoJSONFeatureId,
     type GeoJSONFeatureDiff,
     type TextFit,

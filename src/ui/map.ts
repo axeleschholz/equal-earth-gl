@@ -46,6 +46,7 @@ import {hasOwnPlane} from '../geo/projection/projection_factory.ts';
 import {getDefaultProjection} from '../geo/projection/default_projection.ts';
 
 import type {TileGridSourceOption} from '../source/source_tile_grid.ts';
+import type {CentralMeridianProjectionOption} from '../geo/projection/equal_earth_projection.ts';
 import type {PaddingOptions} from '../geo/edge_insets.ts';
 import type {Source} from '../source/source.ts';
 import type {StyleLayer} from '../style/style_layer.ts';
@@ -4918,20 +4919,28 @@ export class Map extends Evented<MapEventType> {
 
     /**
      * Gets the {@link ProjectionSpecification}.
-     * @returns the projection specification.
+     * @returns the projection specification, with the `central-meridian` it was set with, if any.
      * @example
      * ```ts
      * let projection = map.getProjection();
      * ```
      */
-    getProjection(): ProjectionSpecification { return this.style.getProjection(); }
+    getProjection(): ProjectionSpecification & CentralMeridianProjectionOption { return this.style.getProjection(); }
 
     /**
      * Sets the {@link ProjectionSpecification}.
+     *
+     * The `equal-earth` projection also takes a `central-meridian`, the longitude drawn down the middle of the
+     * world, see {@link CentralMeridianProjectionOption}.
      * @param projection - the projection specification to set
      * @returns
+     * @example
+     * A world map centered on the Pacific:
+     * ```ts
+     * map.setProjection({type: 'equal-earth', 'central-meridian': 150});
+     * ```
      */
-    setProjection(projection: ProjectionSpecification): this {
+    setProjection(projection: ProjectionSpecification & CentralMeridianProjectionOption): this {
         this._lazyInitEmptyStyle();
         this.style.setProjection(projection);
         return this._update(true);

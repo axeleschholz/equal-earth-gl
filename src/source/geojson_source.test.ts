@@ -408,7 +408,7 @@ describe('GeoJSONSource in a registered projection', () => {
         const {source, sent} = await loadSourceInProjection('equal-earth');
         await waitForMetadataEvent(source);
 
-        expect(sent[0].crs).toEqual({name: 'equal-earth', definition: undefined, tileMatrixSet: equalEarthTileMatrixSet});
+        expect(sent[0].crs).toEqual({name: 'equal-earth', definition: undefined, tileMatrixSet: equalEarthTileMatrixSet, centralMeridian: 0});
         expect(source.tileGrid).toBe('plane');
         expect(warn).not.toHaveBeenCalled();
     });

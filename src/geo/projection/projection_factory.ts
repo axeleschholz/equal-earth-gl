@@ -4,22 +4,31 @@ import {GlobeProjection} from './globe_projection.ts';
 import {VerticalPerspectiveProjection} from './vertical_perspective_projection.ts';
 import {CRSWorldCoordinateHelper} from './crs.ts';
 import {getRegisteredProjection} from './projection_crud.ts';
-import {EqualEarthProjection} from './equal_earth_projection.ts';
+import {EqualEarthProjection, type CentralMeridianProjectionOption} from './equal_earth_projection.ts';
 import {equalEarthWorldCoordinateHelper} from './equal_earth_world.ts';
 
 import type {ProjectionSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {Projection} from './projection.ts';
 import type {CameraProjectionKind} from '../../camera/camera_context.ts';
 
+/** The name of the Equal Earth projection, which the style specification's projection names do not include. */
+const EQUAL_EARTH = 'equal-earth' as ProjectionSpecification['type'];
+
 /**
  * @internal
  * The style projection of a projection name or expression, and the projection the camera is projected with in it.
  * The camera's world mapping is the style projection's, see {@link Projection.worldCoordinateHelper}.
+ *
+ * @param options - what the style's projection object holds besides the name
  */
-export function createProjectionFromName(name: ProjectionSpecification['type'], globalState: Record<string, any>): {
+export function createProjectionFromName(name: ProjectionSpecification['type'], globalState: Record<string, any>, options: CentralMeridianProjectionOption = {}): {
     projection: Projection;
     cameraProjection: CameraProjectionKind;
 } {
+    const centralMeridian = options['central-meridian'];
+    if (centralMeridian !== undefined && name !== EQUAL_EARTH) {
+        warnOnce('The "central-meridian" of the projection is only used by the "equal-earth" projection, and is ignored.');
+    }
     if (Array.isArray(name)) {
         const registeredName = findRegisteredProjectionName(name);
         if (registeredName) {
@@ -63,10 +72,10 @@ export function createProjectionFromName(name: ProjectionSpecification['type'], 
                 cameraProjection: 'globe',
             };
         }
-        case 'equal-earth' as ProjectionSpecification['type']:
+        case EQUAL_EARTH:
         {
             return {
-                projection: new EqualEarthProjection(),
+                projection: new EqualEarthProjection(centralMeridian),
                 cameraProjection: 'mercator',
             };
         }

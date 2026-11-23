@@ -193,14 +193,25 @@ function cutPolygon(rings: Position[][]): Position[][][] {
  *   them on the plane are within `tolerance` of it, in world units. A segment that reaches past the latitudes
  *   mercator has runs with latitude changing evenly with longitude instead.
  *
+ * On a plane with a central meridian, longitudes are counted from it, so the cuts fall on the meridian opposite it.
+ *
  * A position whose longitude or latitude is not a finite number, or that is more than eight times around the world,
  * is left out of its line or ring, and a point at one is left as it is, which no tile holds.
  *
  * Returns a new object; the input is never mutated, and members that are not coordinates are carried over.
  */
-export function projectGeoJSONAlongPaths<T extends GeoJSON.GeoJSON>(data: T, worldCoordinateHelper: Pick<WorldCoordinateHelper, 'worldFromLngLat'>, tolerance: number): T {
+export function projectGeoJSONAlongPaths<T extends GeoJSON.GeoJSON>(data: T, worldCoordinateHelper: Pick<WorldCoordinateHelper, 'worldFromLngLat' | 'centralMeridian'>, tolerance: number): T {
+    const centralMeridian = worldCoordinateHelper.centralMeridian ?? 0;
+    const fromCentralMeridian = (position: Position): Position => {
+        if (!centralMeridian) return position;
+        const moved = position.slice();
+        moved[0] -= centralMeridian;
+        return moved;
+    };
+    const linesFromCentralMeridian = (line: Position[]): Position[] => centralMeridian ? line.map(fromCentralMeridian) : line;
+
     const toWorld = (position: Position): Position => {
-        const {x, y} = worldCoordinateHelper.worldFromLngLat(position[0], position[1]);
+        const {x, y} = worldCoordinateHelper.worldFromLngLat(position[0] + centralMeridian, position[1]);
         const projected = position.slice();
         projected[0] = x;
         projected[1] = y;
@@ -240,15 +251,16 @@ export function projectGeoJSONAlongPaths<T extends GeoJSON.GeoJSON>(data: T, wor
 
     const projectPoint = (position: Position): Position => {
         if (!isPlaceable(position)) return position;
-        return toWorld(unshift(position, bandOf(position[0])));
+        const local = fromCentralMeridian(position);
+        return toWorld(unshift(local, bandOf(local[0])));
     };
 
     const projectLines = (lines: Position[][]): Position[][] => {
-        return lines.map(placeable).flatMap(line => line.length ? cutLine(line) : []).map(projectLine);
+        return lines.map(placeable).map(linesFromCentralMeridian).flatMap(line => line.length ? cutLine(line) : []).map(projectLine);
     };
 
     const projectPolygons = (polygons: Position[][][]): Position[][][] => {
-        return polygons.map(rings => rings.map(placeable)).flatMap(cutPolygon).map(rings => rings.map(projectLine));
+        return polygons.map(rings => rings.map(placeable).map(linesFromCentralMeridian)).flatMap(cutPolygon).map(rings => rings.map(projectLine));
     };
 
     const projectGeometry = (geometry: GeoJSON.Geometry): GeoJSON.Geometry => {

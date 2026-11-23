@@ -1,7 +1,7 @@
 import {SubdivisionGranularityExpression, SubdivisionGranularitySetting} from '../../render/subdivision_granularity_settings.ts';
 import {type PreparedShader, shaders} from '../../shaders/shaders.ts';
 import {createTileMeshWithBuffers, type CreateTileMeshOptions} from '../../util/create_tile_mesh.ts';
-import {equalEarthWorldCoordinateHelper} from './equal_earth_world.ts';
+import {getEqualEarthWorldCoordinateHelper} from './equal_earth_world.ts';
 
 import type {Mesh} from '../../render/mesh.ts';
 import type {Projection, TileMeshUsage} from './projection.ts';
@@ -25,19 +25,39 @@ const granularitySettingsEqualEarth: SubdivisionGranularitySetting = new Subdivi
 });
 
 /**
+ * What the map's projection takes beyond the style specification.
+ */
+export type CentralMeridianProjectionOption = {
+    /**
+     * The longitude drawn down the middle of the world in the `equal-earth` projection, from -180 to 180. The world
+     * ends at the meridian opposite it. Other projections do not use it.
+     * @defaultValue 0
+     */
+    'central-meridian'?: number;
+};
+
+/**
  * The Equal Earth projection: a flat map of the whole world on which areas keep their proportions. Its plane is
- * its own, see {@link equalEarthWorldCoordinateHelper}, and the flat camera runs on it. Tiles of the mercator grid
+ * its own, see {@link getEqualEarthWorldCoordinateHelper}, and the flat camera runs on it. Tiles of the mercator grid
  * are warped onto that plane by its shaders, from subdivided meshes whose top and bottom rows reach the poles.
  */
 export class EqualEarthProjection implements Projection {
     private _tileMeshCache: {[_: string]: Mesh} = {};
+    private readonly _worldCoordinateHelper: WorldCoordinateHelper;
+
+    /**
+     * @param centralMeridian - the longitude drawn down the middle of the world, -180 to 180
+     */
+    constructor(centralMeridian: number = 0) {
+        this._worldCoordinateHelper = getEqualEarthWorldCoordinateHelper(centralMeridian);
+    }
 
     get name(): 'equal-earth' {
         return 'equal-earth';
     }
 
     get worldCoordinateHelper(): WorldCoordinateHelper {
-        return equalEarthWorldCoordinateHelper;
+        return this._worldCoordinateHelper;
     }
 
     get transitionState(): number {

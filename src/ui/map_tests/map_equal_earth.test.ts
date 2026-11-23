@@ -223,3 +223,65 @@ describe('terrain on a map in equal-earth', () => {
         map.remove();
     });
 });
+
+describe('the central meridian of a map in equal-earth', () => {
+    test('is taken from the style, and puts that longitude in the middle of the world', async () => {
+        const map = createMap({zoom: 0, center: [150, 0], style: {version: 8, sources: {}, layers: [], projection: {'type': 'equal-earth', 'central-meridian': 150}} as any});
+        await map.once('style.load');
+
+        expect(map.style.projection.worldCoordinateHelper.centralMeridian).toBe(150);
+        expect(map.getProjection()).toEqual({'type': 'equal-earth', 'central-meridian': 150});
+        const middle = map.project([150, 0]);
+        const nearTheEastEdge = map.project([-31, 0]);
+        const nearTheWestEdge = map.project([-29, 0]);
+        expect(nearTheEastEdge.x - middle.x).toBeGreaterThan(200);
+        expect(middle.x - nearTheWestEdge.x).toBeGreaterThan(200);
+    });
+
+    test('changes at runtime: the view stays on its lng/lat, GeoJSON is tiled again and tiles are redrawn', async () => {
+        const map = createMap({zoom: 2, center: [170, -20], style: {version: 8, sources: {
+            points: {type: 'geojson', data: {type: 'Point', coordinates: [170, -20]}},
+        }, layers: [{id: 'points', type: 'circle', source: 'points'}], projection: {type: 'equal-earth'}}});
+        await map.once('style.load');
+        const source = map.getSource('points');
+        const retiled = vi.spyOn(source, 'onProjectionChange');
+
+        map.setProjection({'type': 'equal-earth', 'central-meridian': 180});
+
+        expect(map.style.projection.worldCoordinateHelper.centralMeridian).toBe(180);
+        expect(map.getCenter().lng).toBeCloseTo(170, 6);
+        expect(map.getCenter().lat).toBeCloseTo(-20, 6);
+        expect(retiled).toHaveReturnedWith(true);
+        const center = map.project([170, -20]);
+        const acrossTheAntimeridian = map.project([-170, -20]);
+        expect(acrossTheAntimeridian.x - center.x).toBeGreaterThan(0);
+        expect(acrossTheAntimeridian.x - center.x).toBeLessThan(200);
+    });
+
+    test('keeps the projection when it is set again with the same central meridian', async () => {
+        const map = createMap({zoom: 0, center: [0, 0], style: {version: 8, sources: {}, layers: [], projection: {'type': 'equal-earth', 'central-meridian': 150}} as any});
+        await map.once('style.load');
+        const projection = map.style.projection;
+
+        map.setProjection({'type': 'equal-earth', 'central-meridian': 150});
+
+        expect(map.style.projection).toBe(projection);
+    });
+
+    test('is refused when it is no longitude, and ignored with a warning by another projection', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const map = createMap({zoom: 0, center: [0, 0], style: {version: 8, sources: {}, layers: [], projection: {type: 'equal-earth'}}});
+        await map.once('style.load');
+        const errors: string[] = [];
+        map.on('error', event => errors.push(event.error.message));
+
+        map.setProjection({'type': 'equal-earth', 'central-meridian': 200});
+        expect(errors).toEqual(['projection.central-meridian: a number from -180 to 180 expected, 200 found']);
+        expect(map.style.projection.worldCoordinateHelper.centralMeridian).toBe(0);
+
+        map.setProjection({'type': 'mercator', 'central-meridian': 150});
+        expect(map.style.projection.name).toBe('mercator');
+        expect(warn.mock.calls.some(([message]) => String(message).includes('central-meridian'))).toBe(true);
+    });
+});
+

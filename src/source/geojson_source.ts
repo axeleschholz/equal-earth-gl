@@ -111,6 +111,14 @@ type GeoJSONWorkerChange = {
 type GeoJSONWorkerUpdate = {data: GeoJSON.GeoJSON | string} | GeoJSONWorkerChange;
 
 /**
+ * What tells one plane the workers tile GeoJSON on from another: its name and, for a plane that can be re-centred,
+ * its central meridian. `undefined` for lng/lat.
+ */
+function planeKey(crs: LoadGeoJSONParameters['crs'] | undefined): string | undefined {
+    return crs && `${crs.name}/${crs.centralMeridian ?? 0}`;
+}
+
+/**
  * A source containing GeoJSON.
  * (See the [Style Specification](https://maplibre.org/maplibre-style-spec/#sources-geojson) for detailed documentation of options.)
  *
@@ -184,7 +192,7 @@ export class GeoJSONSource extends Evented<SourceEventType> implements Source {
     }>;
     _options: GeoJSONSourceInternalOptions;
     workerOptions: GeoJSONWorkerOptions;
-    /** The name of the plane the workers were last told to tile this source's data on; undefined for lng/lat. */
+    /** The plane the workers were last told to tile this source's data on, see `planeKey`. */
     private _workerPlane: string | undefined;
     map: Map;
     actorPromise: Promise<Actor>;
@@ -304,7 +312,7 @@ export class GeoJSONSource extends Evented<SourceEventType> implements Source {
      * @returns whether the data is being tiled again, and the source's tiles are to be dropped
      */
     onProjectionChange(): boolean {
-        if (this._getCRSParameters()?.name === this._workerPlane) return false;
+        if (planeKey(this._getCRSParameters()) === this._workerPlane) return false;
         void this._sendDataForNewPlane();
         return true;
     }
@@ -506,7 +514,7 @@ export class GeoJSONSource extends Evented<SourceEventType> implements Source {
         const params: LoadGeoJSONParameters = extend({type: this.type, source: this.id}, this.workerOptions);
         const crs = this._getCRSParameters();
         if (crs) params.crs = crs;
-        this._workerPlane = crs?.name;
+        this._workerPlane = planeKey(crs);
 
         if (!('data' in update)) {
             if (update.diff) params.dataDiff = update.diff;
@@ -540,8 +548,8 @@ export class GeoJSONSource extends Evented<SourceEventType> implements Source {
      */
     private _getCRSParameters(): LoadGeoJSONParameters['crs'] | undefined {
         if (this.tileGrid === 'plane') {
-            const {name, tileMatrixSet} = this.map.style.projection.worldCoordinateHelper;
-            return {name, definition: undefined, tileMatrixSet};
+            const {name, tileMatrixSet, centralMeridian} = this.map.style.projection.worldCoordinateHelper;
+            return {name, definition: undefined, tileMatrixSet, centralMeridian};
         }
         const crs = getRegisteredProjection(this.map?.style?.projection?.name);
         if (!crs) return undefined;

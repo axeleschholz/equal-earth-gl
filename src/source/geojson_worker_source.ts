@@ -8,7 +8,7 @@ import {isAbortError} from '../util/abort_error.ts';
 import {WorkerTile} from './worker_tile.ts';
 import {WorkerTileState} from './worker_tile_state.ts';
 import {extend, JSON_PREFIX} from '../util/util.ts';
-import {createWorkerCRSHelper} from './projection_handler_worker.ts';
+import {createWorkerCRSHelper, type WorkerPlaneParameters} from './projection_handler_worker.ts';
 import {pathToleranceForMaxZoom, reprojectGeoJSONFromWorld, reprojectGeoJSONSourceDiffToWorld, reprojectGeoJSONToWorld} from '../util/geojson_reproject.ts';
 
 import type {GeoJSONSourceDiff} from './geojson_source_diff.ts';
@@ -18,7 +18,6 @@ import type {RequestParameters} from '../util/ajax.ts';
 import type {ClusterIDAndSource, GeoJSONWorkerSourceLoadDataResult, RemoveSourceParams} from '../util/actor_messages.ts';
 import type {IActor} from '../util/actor.ts';
 import type {StyleLayerIndex} from '../style/style_layer_index.ts';
-import type {CRS} from '../geo/projection/crs.ts';
 import type {GeoJSONPlaneHelper} from '../util/geojson_reproject.ts';
 
 /**
@@ -59,7 +58,7 @@ export type LoadGeoJSONParameters = GeoJSONWorkerOptions & {
      * The map's registered projection, if it has one: the data is moved into that projection's world square before it
      * is tiled, the way tiles of the projection's own grid sit in it.
      */
-    crs?: Pick<CRS, 'name' | 'definition' | 'tileMatrixSet'>;
+    crs?: WorkerPlaneParameters;
 };
 
 /**

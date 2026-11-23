@@ -1,6 +1,6 @@
 import {describe, expect, test} from 'vitest';
 import {projectGeoJSONAlongPaths} from './geojson_plane_paths.ts';
-import {equalEarthWorldCoordinateHelper as helper} from '../geo/projection/equal_earth_world.ts';
+import {equalEarthWorldCoordinateHelper as helper, getEqualEarthWorldCoordinateHelper} from '../geo/projection/equal_earth_world.ts';
 import {latFromMercatorY, mercatorYfromLat} from '../geo/mercator_coordinate.ts';
 
 const TOLERANCE = 1e-7;
@@ -180,5 +180,34 @@ describe('projectGeoJSONAlongPaths', () => {
         expect(allBad.coordinates).toEqual([]);
         const point = project({type: 'Point', coordinates: [NaN, 0]});
         expect(point.type).toBe('Point');
+    });
+
+    test('leaves a line across the antimeridian whole on a plane centered on it, and cuts one across the plane\'s own edge', () => {
+        const pacific = getEqualEarthWorldCoordinateHelper(180);
+        const acrossTheAntimeridian: GeoJSON.LineString = {type: 'LineString', coordinates: [[170, 10], [190, 10]]};
+        const acrossGreenwich: GeoJSON.LineString = {type: 'LineString', coordinates: [[-10, 0], [10, 0]]};
+
+        const whole = projectGeoJSONAlongPaths(acrossTheAntimeridian, pacific, 1e-4) as GeoJSON.Geometry;
+        const cut = projectGeoJSONAlongPaths(acrossGreenwich, pacific, 1e-4) as GeoJSON.Geometry as GeoJSON.MultiLineString;
+
+        expect(whole.type).toBe('LineString');
+        const xs = (whole as GeoJSON.LineString).coordinates.map(position => position[0]);
+        expect(Math.min(...xs)).toBeGreaterThan(0.45);
+        expect(Math.max(...xs)).toBeLessThan(0.55);
+        expect(cut.type).toBe('MultiLineString');
+        expect(cut.coordinates).toHaveLength(2);
+        const ends = cut.coordinates.map(line => line.map(position => position[0]));
+        expect(Math.max(...ends[0])).toBeCloseTo(1, 9);
+        expect(Math.min(...ends[1])).toBeCloseTo(0, 9);
+    });
+
+    test('puts a point where the re-centred plane puts it', () => {
+        const pacific = getEqualEarthWorldCoordinateHelper(150);
+
+        const point = projectGeoJSONAlongPaths({type: 'Point', coordinates: [-100, 40]}, pacific, 1e-4);
+
+        const expected = pacific.worldFromLngLat(-100, 40);
+        expect(point.coordinates[0]).toBeCloseTo(expected.x, 12);
+        expect(point.coordinates[1]).toBeCloseTo(expected.y, 12);
     });
 });

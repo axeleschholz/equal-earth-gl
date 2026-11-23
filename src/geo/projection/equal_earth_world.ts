@@ -21,6 +21,12 @@ export const equalEarthTileMatrixSet: TileMatrixSet = {
 const EXTENT = 2 * EQUAL_EARTH_HALF_WIDTH;
 
 /**
+ * How close to the edge of the world, in degrees, a longitude is taken to be on it. Counting a longitude from the
+ * central meridian can round one that names the edge to just past it, which would put it on the opposite edge.
+ */
+const EDGE_ROUNDING = 1e-9;
+
+/**
  * @internal
  * The world coordinate mapping of the `equal-earth` projection: world x/y are Equal Earth meters relative to the
  * top-left corner of {@link equalEarthTileMatrixSet}, scaled so that its tile 0/0/0 is the 0..1 square, with y
@@ -63,6 +69,7 @@ export class EqualEarthWorldCoordinateHelper implements WorldCoordinateHelper {
      */
     worldFromLngLat(lng: number, lat: number, altitude?: number): MercatorCoordinate {
         lng -= this.centralMeridian;
+        if (Math.abs(Math.abs(lng) - 180) < EDGE_ROUNDING) lng = Math.sign(lng) * 180;
         if (lng > 180 || lng < -180) lng = ((lng + 180) % 360 + 360) % 360 - 180;
         const [x, y] = equalEarthForward(lng, lat, this._scratch);
         return new MercatorCoordinate((x + EQUAL_EARTH_HALF_WIDTH) / EXTENT, (EQUAL_EARTH_HALF_WIDTH - y) / EXTENT, altitude === undefined ? 0 : altitude / EXTENT);
