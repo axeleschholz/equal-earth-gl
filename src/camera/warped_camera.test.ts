@@ -1,4 +1,5 @@
 import {describe, expect, test} from 'vitest';
+import {vec4} from 'gl-matrix';
 import {getWorldWindowInTile, withTileWarp} from './warped_camera.ts';
 import {getCameraMath} from './camera_math_factory.ts';
 import {createTestCamera} from '../util/test/util.ts';
@@ -150,3 +151,32 @@ describe('getWorldWindowInTile', () => {
         expect(getWorldWindowInTile(camera, new OverscaledTileID(0, 0, 0, 0, 0).toUnwrapped())).toBeNull();
     });
 });
+
+describe('drawing with a warped camera', () => {
+    test('gets the warp\'s data from the camera math for a tile', () => {
+        const camera = cameraAt(20, 30, 4);
+        const warped = withTileWarp(camera, helper, undefined);
+        const tileID = new OverscaledTileID(4, 0, 4, 8, 6);
+
+        const data = getCameraMath(warped).getProjectionData(warped, {overscaledTileID: tileID, applyTerrainMatrix: false});
+
+        expect(Array.from(data.mainMatrix)).toEqual(Array.from(getWarpedProjectionData(warped, tileID, equalEarthTileWarp).mainMatrix));
+        expect(data.projectionTransition).toBe(1);
+    });
+
+    test('lays fog by the depth of where a tile position is drawn, to within a hundredth', () => {
+        const camera = cameraAt(20, 62, 6, 60);
+        const warped = withTileWarp(camera, helper, undefined);
+        const tileID = tileAt(20, 62.5, 6);
+        const fogMatrix = getCameraMath(warped).calculateFogMatrix(warped, tileID.toUnwrapped());
+        for (const [tx, ty] of [[0, 0], [EXTENT, EXTENT], [EXTENT / 2, 100], [7000, 3000]]) {
+            const [x, y] = equalEarthTileWarp.warp(tileID.canonical, tx, ty, [0, 0]);
+            const exact = vec4.transformMat4([], [x * warped.worldSize, y * warped.worldSize, 0, 1], warped.fogMatrix);
+
+            const approximate = vec4.transformMat4([], [tx, ty, 0, 1], fogMatrix);
+
+            expect(Math.abs(approximate[2] / approximate[3] - exact[2] / exact[3])).toBeLessThan(0.01);
+        }
+    });
+});
+

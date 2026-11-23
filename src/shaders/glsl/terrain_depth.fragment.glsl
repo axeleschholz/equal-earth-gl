@@ -11,5 +11,6 @@ highp vec4 pack(highp float value) {
 }
 
 void main() {
+    clipWorldEdge();
     fragColor = pack(v_depth);
 }

@@ -141,6 +141,7 @@ export class FrameRenderContext {
      * are warped onto, for tiles of the mercator grid, the frame's with that warp, see `withTileWarp`.
      */
     get projectedCamera(): ProjectedCamera {
+        if (this.isRenderingToTexture) return this.frameCamera;
         return withTileWarp(this.frameCamera, this.worldCoordinateHelper, this.currentTileGrid);
     }
 
@@ -199,9 +200,13 @@ export class FrameRenderContext {
         });
     }
 
-    /** Whether the tiles being drawn lie flat on a plane that mercator tiles are warped onto, see {@link currentTileGrid}. */
+    /**
+     * Whether what is being drawn lies flat although the plane is one that mercator tiles are warped onto: tiles of
+     * the plane's own grid, see {@link currentTileGrid}, and anything drawn into the texture of a terrain tile, in
+     * the tile's own space.
+     */
     private drawsFlatOnWarpPlane(): boolean {
-        return this.currentTileGrid === 'plane' && !!this.worldCoordinateHelper.mercatorTileWarp;
+        return (this.isRenderingToTexture || this.currentTileGrid === 'plane') && !!this.worldCoordinateHelper.mercatorTileWarp;
     }
 
     colorModeForRenderPass(): Readonly<ColorMode> {

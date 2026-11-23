@@ -308,6 +308,7 @@ export class RenderToTexture {
             }
             frameRenderContext.isRenderingToTexture = false;
             setFrameUniformWorldSize(painter.context.frameUniformBuffer, painter.context.gl.drawingBufferWidth, painter.context.gl.drawingBufferHeight);
+            frameRenderContext.currentTileGrid = this.terrain.tileManager.tileManager.getSource?.()?.tileGrid;
             drawTerrain(this.painter, this.terrain, this._rttTiles, frameRenderContext);
             this._rttTiles = [];
 

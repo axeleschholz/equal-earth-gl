@@ -428,7 +428,8 @@ export class Terrain {
 
     /**
      * create a regular mesh which will be used by all terrain-tiles
-     * @param globeEnabled - whether the globe is rendering, which adds the pole geometry of the edge tiles
+     * @param globeEnabled - whether the tiles of the top and bottom row reach the poles, as on the globe and on a plane
+     * that mercator tiles are warped onto, which adds the pole geometry of those tiles
      * @returns the created regular mesh
      */
     getTerrainMesh(tileId: OverscaledTileID, globeEnabled: boolean): Mesh {

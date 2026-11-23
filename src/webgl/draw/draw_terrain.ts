@@ -5,6 +5,7 @@ import {CullFaceMode} from '../cull_face_mode.ts';
 import {Color} from '@maplibre/maplibre-gl-style-spec';
 import {ColorMode} from '../color_mode.ts';
 import {getCameraMath} from '../../camera/camera_math_factory.ts';
+import {hasTileWarp} from '../../camera/warped_camera.ts';
 
 import type {FrameRenderContext} from '../../render/frame_render_context.ts';
 import type {Terrain, TerrainHeightMapTarget} from '../../render/terrain.ts';
@@ -29,7 +30,7 @@ function drawDepth(painter: Painter, terrain: Terrain, frameRenderContext: Frame
     context.viewport.set([0, 0, painter.width  / devicePixelRatio, painter.height / devicePixelRatio]);
     context.clear({color: Color.white, depth: 1});
     for (const tile of tiles) {
-        const mesh = terrain.getTerrainMesh(tile.tileID, frameRenderContext.data.isRenderingGlobe);
+        const mesh = terrain.getTerrainMesh(tile.tileID, frameRenderContext.data.isRenderingGlobe || hasTileWarp(projectedCamera));
         const terrainData = terrain.getTerrainData(tile.tileID);
         const projectionData = getCameraMath(projectedCamera).getProjectionData(projectedCamera, {overscaledTileID: tile.tileID, applyTerrainMatrix: false, applyGlobeMatrix: true});
         const uniformValues = terrainDepthUniformValues(terrain.getSkirtLength(projectedCamera.zoom));
@@ -52,7 +53,7 @@ function drawTerrain(painter: Painter, terrain: Terrain, tiles: Tile[], frameRen
     context.viewport.set([0, 0, painter.width, painter.height]);
 
     for (const tile of tiles) {
-        const mesh = terrain.getTerrainMesh(tile.tileID, isRenderingGlobe);
+        const mesh = terrain.getTerrainMesh(tile.tileID, isRenderingGlobe || hasTileWarp(projectedCamera));
         const texture = painter.renderToTexture.getTexture(tile);
         const terrainData = terrain.getTerrainData(tile.tileID);
         context.activeTexture.set(gl.TEXTURE0);

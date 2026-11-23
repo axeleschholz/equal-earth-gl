@@ -20,6 +20,7 @@ vec4 linearToGamma(vec4 color) {
 }
 
 void main() {
+    clipWorldEdge();
     vec4 surface_color = texture(u_texture, vec2(v_texture_pos.x, 1.0 - v_texture_pos.y));
 
     // Skip fog blending in globe mode or when fog opacity is zero

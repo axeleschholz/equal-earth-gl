@@ -14,6 +14,7 @@ import {createFrustum, type Frustum} from '../util/primitives/frustum.ts';
 import {bisect, sampleAt, isBelowTerrainSample, TERRAIN_OCCLUSION_MARGIN, type TerrainCoverageIndex, type TerrainSample} from '../render/terrain_coverage.ts';
 import {getWarpedProjectionData} from '../geo/projection/warped_projection_data.ts';
 
+import type {TileWarp} from '../geo/projection/tile_warp.ts';
 import type {PointProjection} from '../symbol/projection.ts';
 import type {LngLat} from '../geo/lng_lat.ts';
 import type {CameraMetrics, MercatorProjectedCamera, MercatorMatrixCache} from './projected_camera.ts';
@@ -540,7 +541,9 @@ export class MercatorCameraMath implements CameraMath {
             return cache.get(posMatrixKey);
         }
 
-        const fogMatrix = calculateTileMatrix(unwrappedTileID, projectedCamera.worldSize);
+        const fogMatrix = projectedCamera.tileWarp ?
+            calculateWarpedTileMatrix(projectedCamera.tileWarp, unwrappedTileID, projectedCamera.worldSize) :
+            calculateTileMatrix(unwrappedTileID, projectedCamera.worldSize);
         mat4.multiply(fogMatrix, projectedCamera.fogMatrix, fogMatrix);
 
         cache.set(posMatrixKey, new Float32Array(fogMatrix)); // Must be 32 bit floats, otherwise WebGL calls in Chrome get very slow.
@@ -571,7 +574,12 @@ export class MercatorCameraMath implements CameraMath {
         return worldCoordinateHelper.lngLatFromWorld(camMercator.x, camMercator.y);
     }
 
+    /**
+     * What the projection's shaders need to draw a tile. For a camera with a tile warp it is the warp's data for
+     * the tile, see `getWarpedProjectionData`.
+     */
     getProjectionData(projectedCamera: MercatorProjectedCamera, params: ProjectionDataParams): RendererProjectionData {
+        if (projectedCamera.tileWarp) return getWarpedProjectionData(projectedCamera, params.overscaledTileID ?? null, projectedCamera.tileWarp);
         const {overscaledTileID, aligned, applyTerrainMatrix} = params;
         const mercatorTileCoordinates = getMercatorTileCoordinates(overscaledTileID);
         const tilePosMatrix = overscaledTileID ? calculatePosMatrix(projectedCamera, overscaledTileID, aligned, true) : null;
@@ -703,6 +711,28 @@ export class MercatorCameraMath implements CameraMath {
 }
 
 const scratchWarped: [number, number] = [0, 0];
+
+/**
+ * The matrix that takes positions in a warped tile to world pixels as closely as a matrix can: the warp at the
+ * tile's center and its slope there. It is as good as the tile is small, which is enough for what varies slowly
+ * across a tile, like the depth that fog is laid on by.
+ */
+function calculateWarpedTileMatrix(warp: TileWarp, unwrappedTileID: UnwrappedTileID, worldSize: number): Mat4f64 {
+    const {canonical, wrap} = unwrappedTileID;
+    const tile = {x: canonical.x, y: canonical.y, z: canonical.z, wrap};
+    const half = EXTENT / 2;
+    const [centerX, centerY] = warp.warp(tile, half, half, scratchWarped);
+    const [xByTx, xByTy, yByTx, yByTy] = warp.jacobian(tile, half, half);
+    const matrix: Mat4f64 = new Float64Array(16);
+    mat4.identity(matrix);
+    matrix[0] = xByTx * worldSize;
+    matrix[1] = yByTx * worldSize;
+    matrix[4] = xByTy * worldSize;
+    matrix[5] = yByTy * worldSize;
+    matrix[12] = (centerX - (xByTx + xByTy) * half) * worldSize;
+    matrix[13] = (centerY - (yByTx + yByTy) * half) * worldSize;
+    return matrix;
+}
 
 /**
  * Projects a position in a tile of the mercator grid with a camera that has a tile warp: the warp takes it onto the
