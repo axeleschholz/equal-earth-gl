@@ -44,6 +44,7 @@ import {CanonicalTileID, type OverscaledTileID} from '../tile/tile_id.ts';
 import {isStyleImageWebGLData} from '../style/style_image.ts';
 import {hasOwnPlane} from '../geo/projection/projection_factory.ts';
 import {getDefaultProjection} from '../geo/projection/default_projection.ts';
+import {resolveSourceTileGrid} from '../source/source_tile_grid.ts';
 
 import type {TileGridSourceOption} from '../source/source_tile_grid.ts';
 import type {CentralMeridianProjectionOption} from '../geo/projection/equal_earth_projection.ts';
@@ -3099,8 +3100,8 @@ export class Map extends Evented<MapEventType> {
             return this;
         }
 
-        if (options && this._projectionLacksTerrain()) {
-            warnOnce(`Terrain is not yet supported in the ${this.style.projection.name} projection. The map is drawn without it.`);
+        if (options && this._projectionLacksTerrain(options)) {
+            warnOnce(`Terrain from the source "${options.source}" cannot be drawn in the ${this.style.projection.name} projection, which draws terrain from Web Mercator tiles only. The map is drawn without it.`);
             this._applyTerrain(null);
         } else {
             this._applyTerrain(options ?? null);
@@ -3118,11 +3119,16 @@ export class Map extends Evented<MapEventType> {
     }
 
     /**
-     * Whether the map's projection cannot draw terrain yet: one that warps mercator tiles onto a plane of its own,
-     * where the terrain's tiles, its elevation lookups and the camera's ray casts would each need that warp.
+     * Whether the map's projection cannot draw a terrain: on a plane that mercator tiles are warped onto, terrain is
+     * drawn from mercator tiles, with the layers of the other mercator sources draped on it, and not from a DEM
+     * source cut in the plane's own grid.
      */
-    private _projectionLacksTerrain(): boolean {
-        return !!this.style.projection?.worldCoordinateHelper.mercatorTileWarp;
+    private _projectionLacksTerrain(options: TerrainSpecification): boolean {
+        const plane = this.style.projection?.worldCoordinateHelper;
+        if (!plane?.mercatorTileWarp) return false;
+        const source = this.style.tileManagers[options.source]?.getSource();
+        const tileGrid = (source?.serialize() as TileGridSourceOption | undefined)?.tileGrid;
+        return resolveSourceTileGrid(tileGrid, plane) === 'plane';
     }
 
     /**
@@ -3132,9 +3138,9 @@ export class Map extends Evented<MapEventType> {
     private _matchTerrainToProjection(): void {
         const requested = this._requestedTerrain;
         if (!requested || !this.style?._loaded) return;
-        if (this._projectionLacksTerrain()) {
+        if (this._projectionLacksTerrain(requested)) {
             if (!this.terrain) return;
-            warnOnce(`Terrain is not yet supported in the ${this.style.projection.name} projection. The map is drawn without it.`);
+            warnOnce(`Terrain from the source "${requested.source}" cannot be drawn in the ${this.style.projection.name} projection, which draws terrain from Web Mercator tiles only. The map is drawn without it.`);
             this._applyTerrain(null);
         } else if (!this.terrain && this.style.tileManagers[requested.source]) {
             this._applyTerrain(requested);
@@ -3181,6 +3187,7 @@ export class Map extends Evented<MapEventType> {
             this.style.on('data', this._terrainDataCallback);
         }
 
+        this.style._retileSourcesForTerrain();
         this.style.triggerSymbolPlacement();
         this.fire(new MapTerrainEvent({terrain: options}));
         return this;

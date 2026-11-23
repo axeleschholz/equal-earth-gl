@@ -137,32 +137,94 @@ describe('controls on a map in equal-earth', () => {
 });
 
 describe('terrain on a map in equal-earth', () => {
-    const demStyle = (projection: string) => ({
-        version: 8 as const,
-        projection: {type: projection as any},
-        sources: {dem: {type: 'raster-dem' as const, tiles: ['http://example.com/{z}/{x}/{y}.png'], tileSize: 256}},
-        layers: [],
-    });
+    /** A style with a DEM source of mercator tiles, or with `tileGrid` of tiles cut in that grid. */
+    function demStyle(projection: string, tileGrid?: string): any {
+        return {
+            version: 8 as const,
+            projection: {type: projection as any},
+            sources: {dem: {type: 'raster-dem' as const, tiles: ['http://example.com/{z}/{x}/{y}.png'], tileSize: 256, ...(tileGrid ? {tileGrid} : {})}},
+            layers: [],
+        };
+    }
 
-    test('is kept off, with one warning, and remembered', async () => {
+    test('is drawn from a DEM source of mercator tiles, without a warning', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const map = createMap({style: demStyle('equal-earth')});
+        await map.once('style.load');
+
+        map.setTerrain({source: 'dem', exaggeration: 2});
+
+        expect(map.terrain).not.toBeNull();
+        expect(map.painter.renderToTexture).toBeTruthy();
+        expect(map.getTerrain()).toEqual({source: 'dem', exaggeration: 2});
+        expect(warn.mock.calls.filter(call => String(call[0]).includes('Terrain'))).toHaveLength(0);
+        warn.mockRestore();
+        map.remove();
+    });
+
+    test('comes with a style that carries it', async () => {
+        const map = createMap({style: {...demStyle('equal-earth'), terrain: {source: 'dem'}}});
+        await map.once('style.load');
+
+        expect(map.terrain).not.toBeNull();
+        map.remove();
+    });
+
+    test('has GeoJSON tiled in mercator while it is on, and on the plane again when it goes', async () => {
+        const map = createMap({style: {...demStyle('equal-earth'), sources: {...demStyle('equal-earth').sources, points: {type: 'geojson', data: {type: 'Point', coordinates: [10, 46]}}}}});
+        await map.once('style.load');
+        const source = map.getSource('points');
+        const clearTiles = vi.spyOn(map.style.tileManagers.points, 'clearTiles');
+        expect(source.tileGrid).toBe('plane');
+
+        map.setTerrain({source: 'dem'});
+        expect(source.tileGrid).toBeUndefined();
+        expect(clearTiles).toHaveBeenCalledTimes(1);
+
+        map.setTerrain(null);
+        expect(source.tileGrid).toBe('plane');
+        expect(clearTiles).toHaveBeenCalledTimes(2);
+        map.remove();
+    });
+
+    test('leaves out tile sources cut in the Equal Earth grid while it is on', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const {OverscaledTileID} = await import('../../tile/tile_id.ts');
+        const map = createMap({style: {...demStyle('equal-earth'), sources: {...demStyle('equal-earth').sources, native: {type: 'vector', tiles: ['http://example.com/{z}/{x}/{y}.pbf'], tileGrid: 'equal-earth'}}}});
+        await map.once('style.load');
+        const source = map.getSource('native');
+        const tileID = new OverscaledTileID(2, 0, 2, 1, 1);
+        await vi.waitFor(() => expect(source.loaded()).toBe(true));
+        expect(source.hasTile(tileID)).toBe(true);
+
+        map.setTerrain({source: 'dem'});
+        expect(source.hasTile(tileID)).toBe(false);
+
+        map.setTerrain(null);
+        expect(source.hasTile(tileID)).toBe(true);
+        warn.mockRestore();
+        map.remove();
+    });
+
+    test('is kept off for a DEM source cut in the Equal Earth grid, with one warning, and remembered', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const map = createMap({style: demStyle('equal-earth', 'equal-earth')});
         await map.once('style.load');
         map.setTerrain({source: 'dem', exaggeration: 2});
         map.setTerrain({source: 'dem', exaggeration: 2});
         expect(map.terrain).toBeNull();
         expect(map.painter.renderToTexture).toBeFalsy();
         expect(map.getTerrain()).toEqual({source: 'dem', exaggeration: 2});
-        const warnings = warn.mock.calls.filter(call => String(call[0]).includes('Terrain is not yet supported in the equal-earth projection'));
+        const warnings = warn.mock.calls.filter(call => String(call[0]).includes('cannot be drawn in the equal-earth projection'));
         expect(warnings).toHaveLength(1);
         expect(map.getStyle().terrain).toEqual({source: 'dem', exaggeration: 2});
         warn.mockRestore();
         map.remove();
     });
 
-    test('comes on when the map moves to a projection that has it, and goes off again on the way back', async () => {
+    test('that was kept off comes on when the map moves to a projection that draws it, and goes off again on the way back', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        const map = createMap({style: demStyle('equal-earth')});
+        const map = createMap({style: demStyle('equal-earth', 'equal-earth')});
         await map.once('style.load');
         map.setTerrain({source: 'dem'});
         expect(map.terrain).toBeNull();
@@ -189,7 +251,7 @@ describe('terrain on a map in equal-earth', () => {
         await map.once('style.load');
         map.setTerrain({source: 'dem'});
         expect(map.terrain).not.toBeNull();
-        expect(warn.mock.calls.filter(call => String(call[0]).includes('Terrain is not yet supported'))).toHaveLength(0);
+        expect(warn.mock.calls.filter(call => String(call[0]).includes('Terrain'))).toHaveLength(0);
         warn.mockRestore();
         map.remove();
     });
@@ -210,7 +272,7 @@ describe('terrain on a map in equal-earth', () => {
 
     test('does not bring back the terrain of the style before when a new style is set', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        const map = createMap({style: {...demStyle('equal-earth'), terrain: {source: 'dem', exaggeration: 3}}});
+        const map = createMap({style: {...demStyle('equal-earth', 'equal-earth'), terrain: {source: 'dem', exaggeration: 3}}});
         await map.once('style.load');
         const events: any[] = [];
         map.on('terrain', (e: any) => events.push(e.terrain));
@@ -223,9 +285,9 @@ describe('terrain on a map in equal-earth', () => {
         map.remove();
     });
 
-    test('a style that carries terrain loads without it', async () => {
+    test('a style that carries terrain of a DEM source cut in the Equal Earth grid loads without it', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        const map = createMap({style: {...demStyle('equal-earth'), terrain: {source: 'dem'}}});
+        const map = createMap({style: {...demStyle('equal-earth', 'equal-earth'), terrain: {source: 'dem'}}});
         await map.once('style.load');
         expect(map.terrain).toBeNull();
         expect(map.getTerrain()).toEqual({source: 'dem'});

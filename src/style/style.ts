@@ -1866,6 +1866,18 @@ export class Style extends Evented<MapEventType> {
         }
     }
 
+    /**
+     * @internal
+     * Has the sources whose tiles depend on whether the map has terrain make them anew, after terrain was turned on
+     * or off: on a plane that mercator tiles are warped onto, GeoJSON is tiled in another grid with terrain than
+     * without, see `GeoJSONSource.tileGrid`.
+     */
+    _retileSourcesForTerrain(): void {
+        for (const key in this.tileManagers) {
+            if (this.tileManagers[key].getSource().onProjectionChange?.()) this.tileManagers[key].clearTiles();
+        }
+    }
+
     _validate(validate: Validator, key: string, value: any, props: any, options: StyleSetterOptions = {}): boolean {
         if (options.validate === false) return false;
 

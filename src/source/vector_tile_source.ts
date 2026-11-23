@@ -171,7 +171,7 @@ export class VectorTileSource extends Evented<SourceEventType> implements Source
      */
     get tileGrid(): TileGrid | undefined {
         if (this._options.tileGrid === undefined || !this.map) return undefined;
-        return resolveSourceTileGrid(this._options.tileGrid, this.map.style.projection.worldCoordinateHelper) ?? undefined;
+        return resolveSourceTileGrid(this._options.tileGrid, this.map.style.projection.worldCoordinateHelper, !!this.map.terrain) ?? undefined;
     }
 
     /**
@@ -188,17 +188,17 @@ export class VectorTileSource extends Evented<SourceEventType> implements Source
 
     /** Takes the world mapping of the tiles' grid on the map's plane, and expresses the source's bounds in it. */
     _updateTileBounds(): void {
-        this._gridHelper = sourceGridHelper(this._options.tileGrid, this.map.style.projection.worldCoordinateHelper);
+        this._gridHelper = sourceGridHelper(this._options.tileGrid, this.map.style.projection.worldCoordinateHelper, !!this.map.terrain);
         if (this.bounds && this._gridHelper) this.tileBounds = new TileBounds(this.bounds, this.minzoom, this.maxzoom, this._gridHelper);
     }
 
     /** The tile matrix set of the tiles' grid, which the `{bbox}` of a tile URL is expressed in. */
     _getTileMatrixSet(): TileMatrixSet {
-        return (sourceGridHelper(this._options.tileGrid, this.map.style.projection.worldCoordinateHelper) ?? mercatorWorldCoordinateHelper).tileMatrixSet;
+        return (sourceGridHelper(this._options.tileGrid, this.map.style.projection.worldCoordinateHelper, !!this.map.terrain) ?? mercatorWorldCoordinateHelper).tileMatrixSet;
     }
 
     hasTile(tileID: OverscaledTileID): boolean {
-        if (this._options.tileGrid !== undefined && !sourceGridHasTile(this._options.tileGrid, this.map.style.projection.worldCoordinateHelper, tileID.canonical)) return false;
+        if (this._options.tileGrid !== undefined && !sourceGridHasTile(this._options.tileGrid, this.map.style.projection.worldCoordinateHelper, tileID.canonical, !!this.map.terrain)) return false;
         return !this.tileBounds || this.tileBounds.contains(tileID.canonical);
     }
 

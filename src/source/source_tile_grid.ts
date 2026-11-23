@@ -35,12 +35,16 @@ export const SOURCE_TILE_GRIDS: readonly string[] = ['mercator', 'equal-earth'];
  * A source's grid on a plane, from its `tileGrid` option: `undefined` for the grid the plane takes its sources to
  * be cut in, `plane` for the plane's own grid where that is another one, and `null` where tiles of that grid
  * cannot be drawn on the plane.
+ *
+ * @param draped - whether the map has terrain, which layers are draped on. Terrain is cut in the grid of its DEM, and
+ * only tiles of that grid can be drawn into its tiles, so on a plane that mercator tiles are warped onto, where the
+ * terrain is of mercator tiles, tiles of the plane's own grid cannot be drawn while it is on.
  */
-export function resolveSourceTileGrid(option: string | undefined, plane: Pick<WorldCoordinateHelper, 'sourceTileGrid' | 'tileGridName'>): TileGrid | undefined | null {
+export function resolveSourceTileGrid(option: string | undefined, plane: Pick<WorldCoordinateHelper, 'sourceTileGrid' | 'tileGridName' | 'mercatorTileWarp'>, draped: boolean = false): TileGrid | undefined | null {
     if (option === undefined) return undefined;
     if (option === 'mercator' && plane.sourceTileGrid === 'mercator') return undefined;
-    if (option === plane.tileGridName) return 'plane';
-    return null;
+    if (option !== plane.tileGridName) return null;
+    return draped && plane.mercatorTileWarp ? null : 'plane';
 }
 
 /**
@@ -48,8 +52,8 @@ export function resolveSourceTileGrid(option: string | undefined, plane: Pick<Wo
  * Whether a tile source whose `tileGrid` option is `option` has a tile on a plane: none where its grid cannot be
  * drawn, which is warned about once, and in the plane's own grid only those that touch the world.
  */
-export function sourceGridHasTile(option: string | undefined, plane: WorldCoordinateHelper, tile: {x: number; y: number; z: number}): boolean {
-    const grid = resolveSourceTileGrid(option, plane);
+export function sourceGridHasTile(option: string | undefined, plane: WorldCoordinateHelper, tile: {x: number; y: number; z: number}, draped: boolean = false): boolean {
+    const grid = resolveSourceTileGrid(option, plane, draped);
     if (grid === null) {
         warnOnce(`A source with tileGrid "${option}" cannot be drawn in the map's projection as it is set up, and is left out.`);
         return false;
@@ -66,7 +70,7 @@ export function sourceGridHasTile(option: string | undefined, plane: WorldCoordi
  * bounds and their features' coordinates are in: mercator's for mercator tiles, the plane's for tiles of the
  * plane's own grid, and `null` for a source that cannot be drawn on the plane.
  */
-export function sourceGridHelper(option: string | undefined, plane: WorldCoordinateHelper): WorldCoordinateHelper | null {
-    const grid = resolveSourceTileGrid(option, plane);
+export function sourceGridHelper(option: string | undefined, plane: WorldCoordinateHelper, draped: boolean = false): WorldCoordinateHelper | null {
+    const grid = resolveSourceTileGrid(option, plane, draped);
     return grid === null ? null : featureGeometryHelper(grid, plane);
 }

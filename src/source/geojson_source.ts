@@ -192,7 +192,7 @@ export class GeoJSONSource extends Evented<SourceEventType> implements Source {
     }>;
     _options: GeoJSONSourceInternalOptions;
     workerOptions: GeoJSONWorkerOptions;
-    /** The plane the workers were last told to tile this source's data on, see `planeKey`. */
+    /** The plane the workers were last told, or are about to be told, to tile this source's data on, see `planeKey`. */
     private _workerPlane: string | undefined;
     map: Map;
     actorPromise: Promise<Actor>;
@@ -312,7 +312,9 @@ export class GeoJSONSource extends Evented<SourceEventType> implements Source {
      * @returns whether the data is being tiled again, and the source's tiles are to be dropped
      */
     onProjectionChange(): boolean {
-        if (planeKey(this._getCRSParameters()) === this._workerPlane) return false;
+        const plane = planeKey(this._getCRSParameters());
+        if (plane === this._workerPlane) return false;
+        this._workerPlane = plane;
         void this._sendDataForNewPlane();
         return true;
     }
@@ -534,10 +536,11 @@ export class GeoJSONSource extends Evented<SourceEventType> implements Source {
 
     /**
      * The grid this source's tiles are cut in when that is not the map's: on a plane that mercator tiles are warped
-     * onto, the workers tile the data on the plane itself, where it reaches both poles and needs no warp.
+     * onto, the workers tile the data on the plane itself, where it reaches both poles and needs no warp. While the
+     * map has terrain there, the data is tiled in mercator like the terrain, whose tiles it is drawn into.
      */
     get tileGrid(): TileGrid | undefined {
-        return this.map?.style?.projection?.worldCoordinateHelper.mercatorTileWarp ? 'plane' : undefined;
+        return this.map?.style?.projection?.worldCoordinateHelper.mercatorTileWarp && !this.map.terrain ? 'plane' : undefined;
     }
 
     /**
