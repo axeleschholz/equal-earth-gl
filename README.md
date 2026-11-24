@@ -1,168 +1,134 @@
 # equal-earth-gl
 
-**equal-earth-gl** is a fork of [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) that draws maps in the Equal Earth projection. A style that names no projection renders in Equal Earth. Styles that name `mercator` or `globe` render as they do upstream. Status: all four stages of the design are complete, including 3D terrain; see [the guide](docs/guides/equal-earth.md) and [the design](docs/superpowers/specs/2026-11-16-equal-earth-design.md).
+Interactive vector maps in the [Equal Earth projection](https://en.wikipedia.org/wiki/Equal_Earth_projection), where every country covers its true share of the map.
 
-1. **Draws** (done): background, fill, line and raster layers from ordinary Web Mercator tile sources, and GeoJSON, in Equal Earth at every zoom.
-2. **Parity for flat maps** (done): labels, queries, the remaining 2D layers, image sources, `fitBounds`, controls.
-3. **3D and extension points** (done): fill-extrusion, 3D terrain, custom layers.
-4. **Equal Earth native** (done): tile sources cut in EPSG:8857, a central meridian option.
+![A world basemap drawn in Equal Earth, centered on 150° east](https://raw.githubusercontent.com/axeleschholz/equal-earth-gl/equal-earth/docs/assets/equal-earth/pacific-world.png)
 
-Nothing is published to npm yet. Licence: BSD-3-Clause, as upstream. The upstream README follows.
+**equal-earth-gl** is a fork of [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) 6.18. It has the same API, reads the same styles and uses the same Web Mercator tile sources. The difference is the projection: a style that names none is drawn in Equal Earth (EPSG:8857), at every zoom level.
 
----
+- **Your tiles stay as they are.** Vector, raster and raster-dem tiles in Web Mercator are warped onto the Equal Earth plane on the GPU.
+- **Everything MapLibre draws.** All layer types, labels, 3D buildings, 3D terrain, image sources, markers, popups, controls, `fitBounds` and feature queries.
+- **Any central meridian.** Center the world on the Pacific, the Americas or anywhere else, at load or at runtime.
+- **Exact GeoJSON.** GeoJSON is tiled on the Equal Earth plane itself, up to both poles.
+- **Native Equal Earth tiles.** Sources cut in EPSG:8857 are drawn without the warp, next to Mercator ones.
+- **Still MapLibre.** `mercator`, `globe` and `vertical-perspective` are drawn as upstream draws them.
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://maplibre.org/img/maplibre-logos/maplibre-logo-for-dark-bg.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://maplibre.org/img/maplibre-logos/maplibre-logo-for-light-bg.svg">
-    <img alt="MapLibre Logo" src="https://maplibre.org/img/maplibre-logos/maplibre-logo-for-light-bg.svg" width="200">
-  </picture>
-</p>
+## Install
 
-# MapLibre GL JS
+The package is not on npm yet. Until it is, build it from source:
 
-[![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg?style=flat)](LICENSE.txt) [![Version](https://img.shields.io/npm/v/maplibre-gl?style=flat)](https://www.npmjs.com/package/maplibre-gl) [![CI](https://github.com/maplibre/maplibre-gl-js/actions/workflows/test-all.yml/badge.svg)](https://github.com/maplibre/maplibre-gl-js/actions/workflows/test-all.yml) [![PRs](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat)](https://opensource.org/licenses/BSD-3-Clause) [![codecov](https://codecov.io/gh/maplibre/maplibre-gl-js/branch/main/graph/badge.svg)](https://codecov.io/gh/maplibre/maplibre-gl-js)
-
-**[MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/API/)** is an open-source library for publishing maps on your websites or webview based apps. Fast displaying of maps is possible thanks to GPU-accelerated vector tile rendering.
-
-It originated as an open-source fork of [mapbox-gl-js](https://github.com/mapbox/mapbox-gl-js), before their switch to a non-OSS license in December 2020. The library's initial versions (1.x) were intended to be a drop-in replacement for the Mapbox’s OSS version (1.x) with additional functionality, but have evolved a lot since then.
-
-## Getting Started
-
-Include the CSS file in the `<head>` of your HTML file.
-
-```html
-<link href='https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css' rel='stylesheet' />
+```bash
+git clone https://github.com/axeleschholz/equal-earth-gl.git
+cd equal-earth-gl
+npm ci
+npm run build-dist
 ```
 
-Include the following code in the `<body>` of your HTML file.
+This needs Node 26 and writes the library to `dist/`: `maplibre-gl.mjs`, `maplibre-gl.css` and the TypeScript types in `maplibre-gl.d.ts`. The file names are upstream's, so a project that already uses MapLibre GL JS only changes where it imports from.
+
+## Use
 
 ```html
-<div id='map' style='width: 400px; height: 300px;'></div>
-<script type='module'>
-import * as maplibregl from 'https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.mjs';
+<link rel="stylesheet" href="dist/maplibre-gl.css" />
+<div id="map" style="width: 100%; height: 500px;"></div>
+<script type="module">
+import * as maplibregl from './dist/maplibre-gl.mjs';
 
 const map = new maplibregl.Map({
-  container: 'map',
-  style: 'https://demotiles.maplibre.org/style.json', // stylesheet location
-  center: [-74.5, 40], // starting position [lng, lat]
-  zoom: 9 // starting zoom
+    container: 'map',
+    style: 'https://tiles.openfreemap.org/styles/bright',
+    center: [0, 0],
+    zoom: 1
 });
 </script>
 ```
 
-Enjoy the map!
+The style has no `projection`, so the map is drawn in Equal Earth. To choose at runtime:
 
-<br />
+```js
+map.setProjection({type: 'equal-earth'});
+map.setProjection({type: 'mercator'});
 
-## Documentation
+// Draw styles without a `projection` in Mercator, as MapLibre GL JS does.
+maplibregl.setDefaultProjection('mercator');
+```
 
-Full documentation for this library [is available here](https://maplibre.org/maplibre-gl-js/docs/API/).
+### Center the world elsewhere
 
-Check out the features through [examples](https://maplibre.org/maplibre-gl-js/docs/examples/).
+```js
+map.on('style.load', () => {
+    map.setProjection({type: 'equal-earth', 'central-meridian': 150});
+});
+```
 
-| Showcases                                                                                                              |                                                                                                                            |
-| ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| ![Display a map](https://maplibre.org/maplibre-gl-js/docs/assets/examples/display-a-map.png)                           | ![Third party vector tile source](https://maplibre.org/maplibre-gl-js/docs/assets/examples/3d-terrain.png)                 |
-| ![Animate a series of images](https://maplibre.org/maplibre-gl-js/docs/assets/examples/animate-a-series-of-images.png) | ![Create a heatmap layer](https://maplibre.org/maplibre-gl-js/docs/assets/examples/create-a-heatmap-layer.png)             |
-| ![3D buildings](https://maplibre.org/maplibre-gl-js/docs/assets/examples/display-buildings-in-3d.png)                  | ![Visualize population density](https://maplibre.org/maplibre-gl-js/docs/assets/examples/visualize-population-density.png) |
+### A thematic map from GeoJSON
 
-<br />
+```js
+map.addSource('countries', {type: 'geojson', data: 'countries.geojson'});
+map.addLayer({
+    id: 'population-density',
+    type: 'fill',
+    source: 'countries',
+    paint: {
+        'fill-color': ['interpolate', ['linear'], ['get', 'density'], 0, '#f7fbff', 500, '#08306b']
+    }
+});
+```
 
-Want an example? Have a look at the official [MapLibre GL JS Documentation](https://maplibre.org/maplibre-gl-js/docs/examples/).
+Because areas are true, the amount of color a country gets matches its size on the ground, which is what a choropleth needs.
 
-Use MapLibre GL JS bindings for [React](https://visgl.github.io/react-map-gl/docs/get-started) and [Angular](https://github.com/maplibre/ngx-maplibre-gl). Find more at [awesome-maplibre](https://github.com/maplibre/awesome-maplibre).
+### Tiles cut in the Equal Earth grid
 
-<br />
+```js
+map.addSource('population', {
+    type: 'raster',
+    tiles: ['https://example.com/population/{z}/{x}/{y}.png'],
+    tileSize: 256,
+    tileGrid: 'equal-earth'
+});
+```
 
-## Contribution
+## What is different from a Mercator map
 
-### Getting Involved
+- There is one world, with a left and a right edge. `renderWorldCopies` has no effect.
+- The area around the outline of the world is transparent, so the page shows through.
+- Web Mercator tiles hold nothing beyond 85.05° of latitude. The strip from there to each pole is filled from the edge of the last row of tiles; GeoJSON reaches the poles.
+- `central-meridian` and `tileGrid` are not part of the MapLibre style specification. This library validates them itself; other tools report them as unknown keys.
+- Dash patterns, line patterns and the spacing of labels along lines stretch with the projection, most toward the poles.
 
-Join the #maplibre slack channel at OSMUS: get an invite at https://slack.openstreetmap.us/
-Read the [CONTRIBUTING.md](CONTRIBUTING.md) guide in order to get familiar with how we do things around here.
+The [guide](docs/guides/equal-earth.md) covers all of it: the central meridian, the Equal Earth tile grid and how to cut tiles for it, terrain, custom layers, and the limits.
 
-### Avoid Fragmentation
+## Examples
 
-If you depend on a free software alternative to `mapbox-gl-js`, please consider joining our effort! Anyone with a stake in a healthy community-led fork is welcome to help us figure out our next steps. We welcome contributors and leaders! MapLibre GL JS already represents the combined efforts of a few early fork efforts, and we all benefit from "one project" rather than "our way". If you know of other forks, please reach out to them and direct them here.
+Three pages in [`test/examples`](test/examples) show the projection on its own:
 
-> **MapLibre GL JS** is developed following [Semantic Versioning (2.0.0)](https://semver.org/spec/v2.0.0.html).
+- [A vector basemap](test/examples/display-a-vector-basemap-in-equal-earth.html)
+- [A thematic map](test/examples/display-a-thematic-map-in-equal-earth.html)
+- [A Pacific-centered map](test/examples/display-a-pacific-centered-map-in-equal-earth.html)
 
-## Sponsors
+## Status
 
-We thank everyone who supported us financially in the past and special thanks to the people and organizations who support us with recurring donations!
+The version is `6.18.0-ee.5`: MapLibre GL JS 6.18.0 plus the fifth Equal Earth release. The [changelog](CHANGELOG.md) lists what each one added.
 
-Read more about the MapLibre Sponsorship Program at [https://maplibre.org/sponsors/](https://maplibre.org/sponsors/).
+The unit, build and render test suites of upstream run against the fork, together with about 80 render tests for the projection. Positions computed on the CPU and on the GPU agree to 0.05 pixels at every zoom level. It has been checked in Chrome on macOS; other browsers and platforms have not been checked yet, and rendering speed has not been compared with upstream's.
 
-Gold:
+## Develop
 
-<a href="https://aws.amazon.com/location"><img src="https://maplibre.org/img/aws-logo.svg" alt="Logo AWS" width="25%"/></a>
+```bash
+npm ci
+npm run build-dist     # build dist/
+npm run test-unit      # unit tests
+npm run test-render    # render tests
+npm run lint
+npm run typecheck
+```
 
+The fork is additive: the projection is a new world plane and a tile warp behind MapLibre's own seams, so upstream changes merge in. The [design](docs/superpowers/specs/2026-11-16-equal-earth-design.md) explains how it works. Issues and pull requests are welcome; [AGENTS.md](AGENTS.md) holds the code conventions.
 
-Silver:
+## Credits and license
 
-<a href="https://www.microsoft.com/"><img src="https://maplibre.org/img/msft-logo.svg" alt="Logo MSFT" width="25%"/></a>
+This is MapLibre GL JS with one more projection, and nearly all of the code is the work of the [MapLibre](https://maplibre.org/) contributors and, before them, of Mapbox. It contains no code from Mapbox GL JS 2 or later. The Equal Earth projection is by Bojan Šavrič, Tom Patterson and Bernhard Jenny (2018).
 
-<a href="https://www.mierune.co.jp/?lang=en"><img src="https://maplibre.org/img/mierune-logo.svg" alt="Logo MIERUNE" width="25%"/></a>
+The map in the picture is © [OpenFreeMap](https://openfreemap.org/), © [OpenMapTiles](https://openmaptiles.org/), with data from [OpenStreetMap](https://www.openstreetmap.org/copyright).
 
-<a href="https://komoot.com/"><img src="https://maplibre.org/img/komoot-logo.svg" alt="Logo komoot" width="25%"/></a>
-
-<a href="https://www.jawg.io/"><img src="https://maplibre.org/img/jawgmaps-logo.svg" alt="Logo JawgMaps" width="25%"/></a>
-
-<a href="https://www.radar.com/"><img src="https://maplibre.org/img/radar-logo.svg" alt="Logo Radar" width="25%"/></a>
-
-<a href="https://www.mapme.com/"><img src="https://maplibre.org/img/mapme-logo.svg" alt="Logo mapme" width="25%"/></a>
-
-<a href="https://www.maptiler.com/"><img src="https://maplibre.org/img/maptiler-logo.svg" alt="Logo maptiler" width="25%"/></a>
-
-<a href="https://www.caltopo.com/"><img src="https://maplibre.org/img/caltopo-logo.svg" alt="Logo Caltopo" width="25%"/></a>
-
-<a href="https://www.smartmaps.net/"><img src="https://maplibre.org/img/smartmaps-logo.svg" alt="Logo SmartMaps" width="25%"/></a>
-
-Backers and Supporters:
-
-<a href="https://opencollective.com/maplibre/backer/0/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/0/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/1/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/1/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/2/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/2/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/3/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/3/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/4/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/4/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/5/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/5/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/6/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/6/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/7/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/7/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/8/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/8/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/9/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/9/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/10/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/10/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/11/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/11/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/12/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/12/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/13/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/13/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/14/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/14/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/15/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/15/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/16/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/16/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/17/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/17/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/18/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/18/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/19/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/19/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/20/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/20/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/21/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/21/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/22/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/22/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/23/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/23/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/24/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/24/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/25/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/25/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/26/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/26/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/27/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/27/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/28/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/28/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/29/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/29/avatar.svg?requireActive=false"></a>
-<a href="https://opencollective.com/maplibre/backer/30/website?requireActive=false" target="_blank"><img src="https://opencollective.com/maplibre/backer/30/avatar.svg?requireActive=false"></a>
-
-<br />
-
-## Thank you Mapbox 🙏🏽
-
-We'd like to acknowledge the amazing work Mapbox has contributed to open source. The open source community is sad to part ways with them, but we simultaneously feel grateful for everything they already contributed. `mapbox-gl-js` 1.x is an open source achievement that now lives on as `maplibre-gl`. We're proud to develop on the shoulders of giants, thank you Mapbox 🙇🏽‍♀️.
-
-Please keep in mind: Unauthorized backports are the biggest threat to the MapLibre project. It is unacceptable to backport code from mapbox-gl-js, which is not covered by the former BSD-3 license. If you are unsure about this issue, [please ask](https://github.com/maplibre/maplibre-gl-js/discussions)!
-
-<br />
-
-## License
-
-**MapLibre GL JS** is licensed under the [3-Clause BSD license](./LICENSE.txt).
+Licensed under the [3-Clause BSD license](LICENSE.txt), as upstream.
