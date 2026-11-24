@@ -15,24 +15,19 @@ Interactive vector maps in the [Equal Earth projection](https://en.wikipedia.org
 
 ## Install
 
-The package is not on npm yet. Until it is, build it from source:
-
 ```bash
-git clone https://github.com/axeleschholz/equal-earth-gl.git
-cd equal-earth-gl
-npm ci
-npm run build-dist
+npm install equal-earth-gl
 ```
 
-This needs Node 26 and writes the library to `dist/`: `maplibre-gl.mjs`, `maplibre-gl.css` and the TypeScript types in `maplibre-gl.d.ts`. The file names are upstream's, so a project that already uses MapLibre GL JS only changes where it imports from.
+The package holds `dist/maplibre-gl.mjs`, `dist/maplibre-gl.css` and the TypeScript types. The file names are upstream's, so a project that already uses MapLibre GL JS only changes the package it imports from.
 
 ## Use
 
 ```html
-<link rel="stylesheet" href="dist/maplibre-gl.css" />
+<link rel="stylesheet" href="https://unpkg.com/equal-earth-gl@latest/dist/maplibre-gl.css" />
 <div id="map" style="width: 100%; height: 500px;"></div>
 <script type="module">
-import * as maplibregl from './dist/maplibre-gl.mjs';
+import * as maplibregl from 'https://unpkg.com/equal-earth-gl@latest/dist/maplibre-gl.mjs';
 
 const map = new maplibregl.Map({
     container: 'map',
@@ -41,6 +36,13 @@ const map = new maplibregl.Map({
     zoom: 1
 });
 </script>
+```
+
+With a bundler, import the package and its stylesheet:
+
+```js
+import * as maplibregl from 'equal-earth-gl';
+import 'equal-earth-gl/dist/maplibre-gl.css';
 ```
 
 The style has no `projection`, so the map is drawn in Equal Earth. To choose at runtime:
@@ -108,14 +110,14 @@ Three pages in [`test/examples`](test/examples) show the projection on its own:
 
 ## Status
 
-The version is `6.18.0-ee.5`: MapLibre GL JS 6.18.0 plus the fifth Equal Earth release. The [changelog](CHANGELOG.md) lists what each one added.
+Versions read `6.18.0-ee.6`: MapLibre GL JS 6.18.0 plus the sixth Equal Earth release. The [changelog](CHANGELOG.md) lists what each one added.
 
 The unit, build and render test suites of upstream run against the fork, together with about 80 render tests for the projection. Positions computed on the CPU and on the GPU agree to 0.05 pixels at every zoom level. It has been checked in Chrome on macOS; other browsers and platforms have not been checked yet, and rendering speed has not been compared with upstream's.
 
 ## Develop
 
 ```bash
-npm ci
+npm ci                 # needs Node 26
 npm run build-dist     # build dist/
 npm run test-unit      # unit tests
 npm run test-render    # render tests

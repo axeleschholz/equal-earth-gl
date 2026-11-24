@@ -2,6 +2,10 @@
 ### ✨ Features and improvements
 - _...Add new stuff here..._
 
+## 6.18.0-ee.6
+
+- First release on npm, as `equal-earth-gl`; no code changes since 6.18.0-ee.5
+
 ## 6.18.0-ee.5
 
 ### ✨ Features and improvements
